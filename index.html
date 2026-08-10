@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ecos da Última Porta — DEMO</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="game-container">
+    <!-- HUD -->
+    <div id="hud">
+      <div id="sanity-container">
+        <span class="label">SANIDADE</span>
+        <div id="sanity-bar"><div id="sanity-fill"></div></div>
+      </div>
+
+      <div id="room-name">Mansão</div>
+
+      <div id="inventory">
+        <div class="slot" data-slot="0"></div>
+        <div class="slot" data-slot="1"></div>
+        <div class="slot" data-slot="2"></div>
+        <div class="slot" data-slot="3"></div>
+      </div>
+    </div>
+
+    <!-- Canvas do jogo -->
+    <canvas id="gameCanvas" width="960" height="540"></canvas>
+
+    <!-- Mensagens -->
+    <div id="message"></div>
+
+    <!-- Tela inicial -->
+    <div id="start-screen">
+      <h1>ECOS DA ÚLTIMA PORTA</h1>
+      <p class="subtitle">DEMO</p>
+      <p class="hint">WASD / Setas para mover<br>E — usar / interagir<br>F — ligar/desligar lanterna<br>1-4 — selecionar item</p>
+      <button id="btn-start">ENTRAR NA MANSÃO</button>
+    </div>
+
+    <!-- Game Over -->
+    <div id="gameover-screen" class="hidden">
+      <h1>VOCÊ PERDEU A SANIDADE</h1>
+      <p>Os medos da sua esposa consumiram você...</p>
+      <button id="btn-restart">TENTAR NOVAMENTE</button>
+    </div>
+  </div>
+
+  <script src="js/rooms.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/entities.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
