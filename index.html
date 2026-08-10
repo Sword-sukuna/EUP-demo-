@@ -8,46 +8,42 @@
 </head>
 <body>
   <div id="game-container">
-    <!-- HUD -->
     <div id="hud">
       <div id="sanity-container">
         <span class="label">SANIDADE</span>
         <div id="sanity-bar"><div id="sanity-fill"></div></div>
       </div>
-
       <div id="room-name">Mansão</div>
-
       <div id="inventory">
         <div class="slot" data-slot="0"></div>
         <div class="slot" data-slot="1"></div>
         <div class="slot" data-slot="2"></div>
         <div class="slot" data-slot="3"></div>
       </div>
+      <div id="hint-bar">WASD mover · E interagir · F lanterna · 1-4 item · Espaço atacar</div>
     </div>
 
-    <!-- Canvas do jogo -->
     <canvas id="gameCanvas" width="960" height="540"></canvas>
-
-    <!-- Mensagens -->
     <div id="message"></div>
 
-    <!-- Tela inicial -->
     <div id="start-screen">
-      <h1>ECOS DA ÚLTIMA PORTA</h1>
-      <p class="subtitle">DEMO</p>
-      <p class="hint">WASD / Setas para mover<br>E — usar / interagir<br>F — ligar/desligar lanterna<br>1-4 — selecionar item</p>
+      <div class="title-block">
+        <h1>ECOS DA ÚLTIMA PORTA</h1>
+        <p class="subtitle">DEMO</p>
+      </div>
+      <p class="story">Os medos da sua esposa morta ainda habitam esta mansão.<br>Não deixe a sanidade chegar a zero.</p>
+      <p class="hint">WASD / Setas — mover<br>E — usar / interagir<br>F — lanterna<br>1-4 — inventário<br>Espaço — atacar</p>
       <button id="btn-start">ENTRAR NA MANSÃO</button>
     </div>
 
-    <!-- Game Over -->
     <div id="gameover-screen" class="hidden">
       <h1>VOCÊ PERDEU A SANIDADE</h1>
-      <p>Os medos da sua esposa consumiram você...</p>
+      <p>Os medos a consumiram por completo...</p>
       <button id="btn-restart">TENTAR NOVAMENTE</button>
     </div>
   </div>
 
-  <script src="js/rooms.js"></script>
+  <script src="js/mapdata.js"></script>
   <script src="js/player.js"></script>
   <script src="js/entities.js"></script>
   <script src="js/ui.js"></script>
