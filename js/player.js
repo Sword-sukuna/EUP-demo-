@@ -17,8 +17,8 @@ class Player {
     // lanterna
     this.hasLantern = false;
     this.lanternOn = false;
-    this.lanternRadius = 160;      // raio com lanterna ligada
-    this.baseRadius = 70;         // raio sem lanterna
+    this.lanternRadius = 230;      // raio com lanterna ligada
+    this.baseRadius = 130;         // raio sem lanterna (mais visível)
 
     // combate
     this.attackCooldown = 0;

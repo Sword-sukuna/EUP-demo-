@@ -347,21 +347,27 @@ function draw() {
     ctx.globalAlpha = 0.4;
   }
 
+  // contorno para destacar o personagem no escuro
+  ctx.beginPath();
+  ctx.arc(px, py, 13, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+  ctx.fill();
+
   // corpo
-  ctx.fillStyle = '#4a6a8a';
+  ctx.fillStyle = '#7ab0e0';
   ctx.beginPath();
   ctx.arc(px, py, 11, 0, Math.PI * 2);
   ctx.fill();
 
-  // cabeça / indicação de direção
-  ctx.fillStyle = '#6a8aaa';
+  // cabeça
+  ctx.fillStyle = '#a8d0f0';
   ctx.beginPath();
   ctx.arc(px, py - 4, 7, 0, Math.PI * 2);
   ctx.fill();
 
   // lanterna na mão
   if (player.hasLantern && player.lanternOn) {
-    ctx.fillStyle = '#ddd';
+    ctx.fillStyle = '#ffe080';
     ctx.fillRect(px + 8, py - 2, 10, 5);
   }
 
@@ -370,16 +376,17 @@ function draw() {
   // ========== ESCURIDÃO + LANTERNA ==========
   const radius = player.radius;
 
-  // máscara de escuridão
+  // máscara de escuridão (mais suave)
   ctx.save();
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.92)';
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.72)';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // buraco da lanterna / visão
+  // buraco da visão / lanterna
   ctx.globalCompositeOperation = 'destination-out';
   const gradient = ctx.createRadialGradient(px, py, 0, px, py, radius);
   gradient.addColorStop(0, 'rgba(0,0,0,1)');
-  gradient.addColorStop(0.5, 'rgba(0,0,0,0.7)');
+  gradient.addColorStop(0.4, 'rgba(0,0,0,0.85)');
+  gradient.addColorStop(0.75, 'rgba(0,0,0,0.4)');
   gradient.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = gradient;
   ctx.beginPath();
@@ -391,8 +398,8 @@ function draw() {
   if (player.lanternOn && player.hasLantern) {
     ctx.save();
     const light = ctx.createRadialGradient(px, py, 0, px, py, radius);
-    light.addColorStop(0, 'rgba(255, 200, 100, 0.12)');
-    light.addColorStop(0.6, 'rgba(255, 160, 50, 0.05)');
+    light.addColorStop(0, 'rgba(255, 210, 120, 0.18)');
+    light.addColorStop(0.5, 'rgba(255, 170, 60, 0.08)');
     light.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = light;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
