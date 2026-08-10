@@ -4,7 +4,7 @@ class Player {
   constructor(x, y) {
     this.x = x;
     this.y = y;
-    this.radius = 11;
+    this.radius = 9;
     this.speed = 2.5;
     this.sanity = 100;
     this.maxSanity = 100;

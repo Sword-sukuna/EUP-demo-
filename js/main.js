@@ -18,7 +18,7 @@ let doorUnlocked = false;
 let chestOpened = false;
 
 function initGame() {
-  player = new Player(660, 550);
+  player = new Player(660, 500);
   enemies = spawnMapEnemies();
   items = MAP_ITEMS.map(i => ({ ...i, taken: false }));
   objects = MAP_OBJECTS.map(o => ({ ...o }));
