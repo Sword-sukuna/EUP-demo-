@@ -232,3 +232,24 @@ html, body {
     aspect-ratio: 16 / 9;
   }
 }
+
+
+#prompt {
+  position: absolute;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10, 8, 6, 0.9);
+  border: 1px solid #c9a040;
+  color: #e8d5a0;
+  padding: 10px 22px;
+  font-size: 14px;
+  letter-spacing: 1px;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 25;
+  transition: opacity 0.15s;
+  text-align: center;
+  box-shadow: 0 0 16px rgba(201, 160, 64, 0.25);
+}
+#prompt.show { opacity: 1; }

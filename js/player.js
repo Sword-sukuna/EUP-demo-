@@ -4,8 +4,9 @@ class Player {
   constructor(x, y) {
     this.x = x;
     this.y = y;
-    this.radius = 9;
-    this.speed = 3.0;
+    this.radius = 8;
+    this.footOffset = 12; // colisão na ponta do pé
+    this.speed = 3.4;
     this.sanity = 100;
     this.maxSanity = 100;
 
@@ -46,22 +47,26 @@ class Player {
     this.y = Math.max(16, Math.min(MAP_H - 16, this.y));
   }
 
+  // py aqui é a coordenada Y do CENTRO; colisão usa a ponta do pé
   solidAt(px, py) {
-    // checa 4 pontos ao redor do círculo
+    const footY = py + this.footOffset;
     const r = this.radius;
+    // pontos só na base (pés), não na cabeça/corpo
     const pts = [
-      [px, py],
-      [px - r, py], [px + r, py],
-      [px, py - r], [px, py + r],
-      [px - r * 0.7, py - r * 0.7],
-      [px + r * 0.7, py - r * 0.7],
-      [px - r * 0.7, py + r * 0.7],
-      [px + r * 0.7, py + r * 0.7],
+      [px, footY],
+      [px - r, footY],
+      [px + r, footY],
+      [px - r * 0.6, footY - 2],
+      [px + r * 0.6, footY - 2],
     ];
     for (const [x, y] of pts) {
       if (typeof isSolid === 'function' && isSolid(x, y)) return true;
     }
     return false;
+  }
+
+  feetPos() {
+    return { x: this.x, y: this.y + this.footOffset };
   }
 
   takeDamage(amount) {

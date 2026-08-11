@@ -6,7 +6,10 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const mapImg = new Image();
 mapImg.src = 'assets/mapa-mansao.jpg';
-const ZOOM = 1.55;
+const collImg = new Image();
+collImg.src = 'assets/collision-map.png';
+collImg.onload = () => initCollisionMap(collImg);
+const ZOOM = 1.8;
 
 let player, enemies = [];
 let items = [], interactables = [], storyNotes = [];
@@ -20,7 +23,7 @@ let chestOpened = false;
 let debugCollision = false;
 
 function initGame() {
-  player = new Player(660, 500);
+  player = new Player(1100, 900);
   enemies = spawnMapEnemies();
   items = MAP_ITEMS.map(i => ({ ...i, taken: false }));
   interactables = INTERACTABLES.map(o => ({ ...o }));
@@ -84,11 +87,74 @@ window.addEventListener('keydown', e => {
 window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 canvas.addEventListener('click', () => { if (gameRunning) attack(); });
 
+
+function getNearbyPrompt() {
+  if (!player) return null;
+  const fx = player.x;
+  const fy = player.y + player.footOffset;
+  const reach = 42;
+
+  for (const item of items) {
+    if (item.taken) continue;
+    if (Math.hypot(fx - item.x, fy - item.y) < reach)
+      return 'Aperte E para pegar ' + item.type;
+  }
+  for (const n of storyNotes) {
+    if (Math.hypot(fx - n.x, fy - n.y) < reach)
+      return n.read ? 'Aperte E para ler novamente' : 'Aperte E para ler a carta';
+  }
+  for (const obj of interactables) {
+    if (Math.hypot(fx - obj.x, fy - obj.y) > (obj.r || 36)) continue;
+    if (obj.type === 'fogueira') return 'Aperte E para descansar na fogueira';
+    if (obj.type === 'janela') return obj.open ? 'Aperte E para fechar a janela' : 'Aperte E para abrir a janela';
+    if (obj.type === 'bau') return chestOpened ? 'Baú aberto' : 'Aperte E para abrir o baú';
+    if (obj.type === 'alavanca') return obj.on ? 'Aperte E para desligar a alavanca' : 'Aperte E para puxar a alavanca';
+  }
+  for (const d of doors) {
+    if (Math.hypot(fx - (d.x + d.w/2), fy - (d.y + d.h/2)) < 50) {
+      if (d.locked) return 'Porta trancada';
+      return 'Aperte E para examinar a porta';
+    }
+  }
+  for (const s of stairs) {
+    if (hitsBox(fx, fy, 16, s)) return 'Aperte E para examinar as escadas';
+  }
+  if (typeof getTileType === 'function') {
+    const tt = getTileType(fx, fy);
+    if (tt === 'scene') return 'Aperte E para sair (outro cenário)';
+    if (tt === 'interact') return 'Aperte E para interagir';
+    if (tt === 'note') return 'Aperte E para ler';
+    if (tt === 'item') return 'Aperte E para pegar';
+  }
+  return null;
+}
+
+function updatePrompt() {
+  const el = document.getElementById('prompt');
+  if (!el) return;
+  const text = getNearbyPrompt();
+  if (text) {
+    el.textContent = text;
+    el.classList.add('show');
+  } else {
+    el.classList.remove('show');
+  }
+}
+
 function interact() {
+  // laranja = outros cenários
+  if (typeof getTileType === 'function') {
+    const feet = player.feetPos(); const t = getTileType(feet.x, feet.y);
+    if (t === 'scene') {
+      showMessage('Saída para outro cenário (pátio / rua) — em breve.');
+      return;
+    }
+  }
+  const fx = player.x, fy = player.y + player.footOffset;
   // itens verdes
   for (const item of items) {
     if (item.taken) continue;
-    if (Math.hypot(player.x - item.x, player.y - item.y) < 42) {
+    if (Math.hypot(fx - item.x, fy - item.y) < 42) {
       if (player.addItem(item.type)) {
         item.taken = true;
         showMessage('Pegou: ' + item.type);
@@ -98,7 +164,7 @@ function interact() {
   }
   // cartas magenta
   for (const n of storyNotes) {
-    if (Math.hypot(player.x - n.x, player.y - n.y) < 36) {
+    if (Math.hypot(fx - n.x, fy - n.y) < 36) {
       n.read = true;
       showMessage(n.text, 5000);
       return;
@@ -106,7 +172,7 @@ function interact() {
   }
   // interações brancas
   for (const obj of interactables) {
-    if (Math.hypot(player.x - obj.x, player.y - obj.y) > (obj.r || 36)) continue;
+    if (Math.hypot(fx - obj.x, fy - obj.y) > (obj.r || 36)) continue;
     if (obj.type === 'fogueira') {
       player.heal(100);
       enemies = spawnMapEnemies();
@@ -197,8 +263,9 @@ function update() {
     if (Math.abs(dx) > Math.abs(dy)) player.facing = dx > 0 ? 'right' : 'left';
     else player.facing = dy > 0 ? 'down' : 'up';
     const tx = player.x + mx, ty = player.y + my;
-    if (!player.solidAt(tx, player.y) && !hitsDynamic(tx, player.y, player.radius)) player.x = tx;
-    if (!player.solidAt(player.x, ty) && !hitsDynamic(player.x, ty, player.radius)) player.y = ty;
+    const foot = player.footOffset;
+    if (!player.solidAt(tx, player.y) && !hitsDynamic(tx, player.y + foot, player.radius)) player.x = tx;
+    if (!player.solidAt(player.x, ty) && !hitsDynamic(player.x, ty + foot, player.radius)) player.y = ty;
     player.x = Math.max(16, Math.min(MAP_W - 16, player.x));
     player.y = Math.max(16, Math.min(MAP_H - 16, player.y));
   }
@@ -214,6 +281,7 @@ function update() {
     document.getElementById('gameover-screen').classList.remove('hidden');
   }
   updateHUD(player, getZoneName());
+  updatePrompt();
 }
 
 function draw() {
@@ -232,45 +300,23 @@ function draw() {
     ctx.scale(scale, scale);
     if (mapImg.complete && mapImg.naturalWidth > 0) ctx.drawImage(mapImg, 0, 0, MAP_W, MAP_H);
 
-    // VERMELHO paredes
-    if (typeof COLL_GRID !== 'undefined') {
-      ctx.fillStyle = 'rgba(255,0,0,0.4)';
-      for (let cy = 0; cy < COLL_ROWS; cy++)
-        for (let cx = 0; cx < COLL_COLS; cx++)
-          if (COLL_GRID[cy][cx] === 1)
-            ctx.fillRect(cx * COLL_CELL, cy * COLL_CELL, COLL_CELL, COLL_CELL);
+    // mostra o MAPA DE COLISÃO por cores (semi-transparente em cima do visual)
+    if (collReady && collCanvas) {
+      ctx.globalAlpha = 0.55;
+      ctx.drawImage(collCanvas, 0, 0, MAP_W, MAP_H);
+      ctx.globalAlpha = 1;
     }
-    // AMARELO objetos
-    ctx.fillStyle = 'rgba(255,220,0,0.45)';
-    for (const o of objectSolids) ctx.fillRect(o.x, o.y, o.w, o.h);
-    // AZUL portas
-    for (const d of doors) {
-      ctx.fillStyle = d.locked ? 'rgba(30,100,255,0.55)' : 'rgba(80,180,255,0.35)';
-      ctx.fillRect(d.x, d.y, d.w, d.h);
-    }
-    // ROXO escadas
-    ctx.fillStyle = 'rgba(160,60,220,0.5)';
-    for (const s of stairs) ctx.fillRect(s.x, s.y, s.w, s.h);
-    // BRANCO interações
-    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
-    ctx.lineWidth = 2;
-    for (const o of interactables) {
-      ctx.beginPath();
-      ctx.arc(o.x, o.y, o.r || 28, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-    // MAGENTA cartas
-    ctx.fillStyle = 'rgba(255,0,180,0.7)';
-    for (const n of storyNotes) {
-      ctx.fillRect(n.x - 8, n.y - 6, 16, 12);
-    }
-    // VERDE itens
-    ctx.fillStyle = 'rgba(0,255,80,0.8)';
+    // itens/notas por cima
+    ctx.fillStyle = 'rgba(0,255,80,0.9)';
     for (const it of items) {
       if (it.taken) continue;
       ctx.beginPath();
       ctx.arc(it.x, it.y, 8, 0, Math.PI * 2);
       ctx.fill();
+    }
+    ctx.fillStyle = 'rgba(255,0,180,0.9)';
+    for (const n of storyNotes) {
+      ctx.fillRect(n.x - 8, n.y - 6, 16, 12);
     }
     // player
     ctx.strokeStyle = '#00ff00';
