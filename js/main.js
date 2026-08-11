@@ -6,7 +6,7 @@ const ctx = canvas.getContext('2d');
 const mapImg = new Image();
 mapImg.src = 'assets/mapa-mansao.jpg';
 
-const ZOOM = 1.75;
+const ZOOM = 1.55;
 
 let player, enemies = [];
 let items = [], objects = [];

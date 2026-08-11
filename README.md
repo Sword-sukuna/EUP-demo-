@@ -1,57 +1,28 @@
 # Ecos da Última Porta — DEMO
 
-Demo jogável de terror top-down inspirada em **The Binding of Isaac**.
+Terror top-down com o **mapa real da mansão** como fundo.
 
-## Como jogar
-
-1. Abra o `index.html` no navegador (ou use Live Server)
-2. Clique em **ENTRAR NA MANSÃO**
-
-### Controles
+## Controles
 | Tecla | Ação |
 |-------|------|
 | WASD / Setas | Mover |
-| E | Usar item / Interagir |
-| F | Ligar / Desligar lanterna |
-| 1-4 | Selecionar slot do inventário |
-| Espaço / Clique | Atacar |
+| E | Usar / Interagir |
+| F | Lanterna |
+| 1-4 | Slot do inventário |
+| Espaço | Atacar |
 
-## Mecânicas presentes na demo
+## Puzzles
+1. **Chave** — no quarto inferior esquerdo → abre o **baú** no quarto superior direito
+2. **Alavanca** — no quarto oeste (meio) → libera a passagem do **beco**
+3. **Nota** — no bar → dá dicas dos puzzles
+4. Janelas abertas drenam sanidade
+5. Fogueira restaura sanidade (mas respawna inimigos)
 
-- **Sanidade** (funciona como vida)
-- **Lanterna** (aumenta o campo de visão)
-- **Inventário** com 4 slots
-- **Itens**: café, faca, lanterna, chave
-- **Fogueira** (restaura sanidade total, mas respawna inimigos)
-- **Janelas** (abertas drenam sanidade)
-- **Inimigos**: Fantasmas, Vultos, Aranhas e Elite
-- **Salas interconectadas**: Mansão → Quartos → Escadas → Beco → Bar
-
-## Estrutura do projeto
-
+## Estrutura
 ```
 EUP-demo/
 ├── index.html
 ├── css/style.css
-├── js/
-│   ├── main.js
-│   ├── player.js
-│   ├── rooms.js
-│   ├── entities.js
-│   └── ui.js
-└── assets/
+├── js/mapdata.js, player.js, entities.js, ui.js, main.js
+└── assets/mapa-mansao.jpg   ← imagem real do mapa
 ```
-
-## Próximos passos sugeridos
-
-- [ ] Pixel-art real (sprites)
-- [ ] Sons e ambientação
-- [ ] Puzzle com a chave
-- [ ] Boss final (esposa demoníaca)
-- [ ] Mais salas e progressão
-- [ ] Sistema de save
-
----
-
-**EUP** — Ecos da Última Porta  
-Repositório: [Sword-sukuna/EUP-demo-](https://github.com/Sword-sukuna/EUP-demo-)

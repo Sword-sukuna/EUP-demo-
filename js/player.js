@@ -5,7 +5,7 @@ class Player {
     this.x = x;
     this.y = y;
     this.radius = 9;
-    this.speed = 2.5;
+    this.speed = 3.0;
     this.sanity = 100;
     this.maxSanity = 100;
 
