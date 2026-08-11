@@ -1,4 +1,4 @@
-// ========== MAIN — MAPA REAL + COLISÃO + ESCURIDÃO ==========
+// ========== MAIN — 1280x720 + COLISÃO GROSSA + DEBUG ==========
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
@@ -16,6 +16,35 @@ let frame = 0;
 let leverOn = false;
 let doorUnlocked = false;
 let chestOpened = false;
+let debugCollision = false; // tecla C
+
+// caixas de colisão dinâmicas (objetos / porta)
+let dynamicSolids = [];
+
+function rebuildDynamicSolids() {
+  dynamicSolids = [];
+  for (const obj of objects) {
+    const r = obj.r || 28;
+    if (obj.type === 'fogueira') {
+      dynamicSolids.push({ x: obj.x - 18, y: obj.y - 10, w: 36, h: 28 });
+    } else if (obj.type === 'bau') {
+      dynamicSolids.push({ x: obj.x - 14, y: obj.y - 10, w: 28, h: 20 });
+    } else if (obj.type === 'alavanca') {
+      dynamicSolids.push({ x: obj.x - 10, y: obj.y - 12, w: 20, h: 24 });
+    } else if (obj.type === 'porta_trancada' && !doorUnlocked) {
+      dynamicSolids.push({ x: obj.x - 40, y: obj.y - 12, w: 80, h: 24 });
+    }
+  }
+}
+
+function hitsDynamic(px, py, rad) {
+  for (const s of dynamicSolids) {
+    const nx = Math.max(s.x, Math.min(px, s.x + s.w));
+    const ny = Math.max(s.y, Math.min(py, s.y + s.h));
+    if ((px - nx) ** 2 + (py - ny) ** 2 < rad * rad) return true;
+  }
+  return false;
+}
 
 function initGame() {
   player = new Player(660, 500);
@@ -27,14 +56,21 @@ function initGame() {
   chestOpened = false;
   frame = 0;
   gameRunning = true;
+  rebuildDynamicSolids();
   document.getElementById('start-screen').classList.add('hidden');
   document.getElementById('gameover-screen').classList.add('hidden');
-  showMessage('Você entra na mansão... o ar está pesado.', 2800);
+  showMessage('Você entra na mansão... o ar está pesado. (C = debug colisão)', 3200);
 }
 
 window.addEventListener('keydown', e => {
   keys[e.key.toLowerCase()] = true;
   if (!gameRunning) return;
+
+  if (e.key.toLowerCase() === 'c') {
+    debugCollision = !debugCollision;
+    showMessage(debugCollision ? 'DEBUG: mapa inteiro + colisão (C sai)' : 'DEBUG COLISÃO OFF', 1500);
+  }
+
   if (e.key >= '1' && e.key <= '4') player.selectedSlot = parseInt(e.key) - 1;
   if (e.key.toLowerCase() === 'e') {
     const msg = player.useSelectedItem();
@@ -93,8 +129,9 @@ function interact() {
       obj.on = !obj.on;
       leverOn = obj.on;
       doorUnlocked = leverOn;
+      rebuildDynamicSolids();
       showMessage(leverOn
-        ? 'Alavanca ativada. Você ouve um clique no beco...'
+        ? 'Alavanca ativada. Passagem do beco liberada!'
         : 'Alavanca desligada.');
       return;
     }
@@ -143,7 +180,26 @@ function update() {
   if (keys['s'] || keys['arrowdown']) dy = 1;
   if (keys['a'] || keys['arrowleft']) dx = -1;
   if (keys['d'] || keys['arrowright']) dx = 1;
-  player.move(dx, dy);
+
+  // movimento com grid + objetos dinâmicos
+  if (dx || dy) {
+    const len = Math.hypot(dx, dy) || 1;
+    const mx = (dx / len) * player.speed;
+    const my = (dy / len) * player.speed;
+    player.anim += 0.25;
+    if (Math.abs(dx) > Math.abs(dy)) player.facing = dx > 0 ? 'right' : 'left';
+    else player.facing = dy > 0 ? 'down' : 'up';
+
+    const tryX = player.x + mx;
+    const tryY = player.y + my;
+    if (!player.solidAt(tryX, player.y) && !hitsDynamic(tryX, player.y, player.radius))
+      player.x = tryX;
+    if (!player.solidAt(player.x, tryY) && !hitsDynamic(player.x, tryY, player.radius))
+      player.y = tryY;
+
+    player.x = Math.max(16, Math.min(MAP_W - 16, player.x));
+    player.y = Math.max(16, Math.min(MAP_H - 16, player.y));
+  }
 
   for (const e of enemies) e.update(player);
 
@@ -165,6 +221,75 @@ function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   if (!player) return;
 
+  // ===== DEBUG: mapa INTEIRO visível, sem breu =====
+  if (debugCollision) {
+    const scale = Math.min(canvas.width / MAP_W, canvas.height / MAP_H);
+    const ox = (canvas.width - MAP_W * scale) / 2;
+    const oy = (canvas.height - MAP_H * scale) / 2;
+
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.save();
+    ctx.translate(ox, oy);
+    ctx.scale(scale, scale);
+
+    if (mapImg.complete && mapImg.naturalWidth > 0) {
+      ctx.drawImage(mapImg, 0, 0, MAP_W, MAP_H);
+    }
+
+    // colisão vermelha em tudo
+    if (typeof COLL_GRID !== 'undefined') {
+      ctx.fillStyle = 'rgba(255, 0, 0, 0.45)';
+      for (let cy = 0; cy < COLL_ROWS; cy++) {
+        for (let cx = 0; cx < COLL_COLS; cx++) {
+          if (COLL_GRID[cy][cx] === 1) {
+            ctx.fillRect(cx * COLL_CELL, cy * COLL_CELL, COLL_CELL, COLL_CELL);
+          }
+        }
+      }
+    }
+
+    // objetos dinâmicos em azul
+    ctx.fillStyle = 'rgba(0, 140, 255, 0.5)';
+    for (const s of dynamicSolids) {
+      ctx.fillRect(s.x, s.y, s.w, s.h);
+    }
+
+    // player em verde
+    ctx.strokeStyle = '#00ff00';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(player.x - player.radius, player.y - player.radius, player.radius * 2, player.radius * 2);
+    ctx.fillStyle = '#00ff00';
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, 6, 0, Math.PI * 2);
+    ctx.fill();
+
+    // inimigos em amarelo
+    ctx.fillStyle = '#ffcc00';
+    for (const e of enemies) {
+      if (!e.alive) continue;
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, 8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+
+    // legenda
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(8, 8, 320, 72);
+    ctx.fillStyle = '#fff';
+    ctx.font = '13px monospace';
+    ctx.fillText('DEBUG MAPA INTEIRO (tecla C sai)', 16, 28);
+    ctx.fillStyle = '#ff6666';
+    ctx.fillText('VERMELHO = colisão parede', 16, 48);
+    ctx.fillStyle = '#66aaff';
+    ctx.fillText('AZUL = objeto/porta  |  VERDE = você', 16, 66);
+    return;
+  }
+
+  // ===== jogo normal =====
   const viewW = canvas.width / ZOOM;
   const viewH = canvas.height / ZOOM;
   let camX = player.x - viewW / 2;
@@ -176,11 +301,9 @@ function draw() {
   const screenPY = (player.y - camY) * ZOOM;
   const radius = player.vision * ZOOM;
 
-  // 1) tela toda preta
-  ctx.fillStyle = '#000000';
+  ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // 2) só dentro do círculo de visão desenha o mundo
   ctx.save();
   ctx.beginPath();
   ctx.arc(screenPX, screenPY, radius, 0, Math.PI * 2);
@@ -242,8 +365,8 @@ function draw() {
       ctx.fillRect(obj.x - 7, obj.y - 5, 14, 10);
     }
     if (obj.type === 'porta_trancada' && !doorUnlocked) {
-      ctx.fillStyle = 'rgba(180,40,40,0.45)';
-      ctx.fillRect(obj.x - 28, obj.y - 6, 56, 12);
+      ctx.fillStyle = 'rgba(180,40,40,0.5)';
+      ctx.fillRect(obj.x - 36, obj.y - 10, 72, 20);
     }
   }
 
@@ -252,7 +375,6 @@ function draw() {
   ctx.restore();
   ctx.restore();
 
-  // 3) vinheta na borda do círculo
   const grd = ctx.createRadialGradient(screenPX, screenPY, radius * 0.5, screenPX, screenPY, radius);
   grd.addColorStop(0, 'rgba(0,0,0,0)');
   grd.addColorStop(1, 'rgba(0,0,0,0.65)');
@@ -261,7 +383,6 @@ function draw() {
   ctx.fillStyle = grd;
   ctx.fill();
 
-  // 4) personagem SEMPRE por cima (visível)
   ctx.save();
   ctx.scale(ZOOM, ZOOM);
   ctx.translate(-camX, -camY);
