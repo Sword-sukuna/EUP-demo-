@@ -39,8 +39,8 @@ const STORY_NOTES = [
 ];
 
 const STAIRS = [
-  { x: 790, y: 385, w: 130, h: 70, label: 'Escadas (2º andar)', locked: true },
-  { x: 1180, y: 385, w: 130, h: 70, label: 'Escadas (2º andar)', locked: true },
+  { x: 850, y: 520, w: 90, h: 50, label: 'Escadas (2º andar)', locked: true },
+  { x: 1230, y: 520, w: 90, h: 50, label: 'Escadas (2º andar)', locked: true },
 ];
 
 const MAP_ENEMIES = [
@@ -68,3 +68,25 @@ const ZONES = [
 ];
 
 const MAP_OBJECTS = INTERACTABLES;
+
+
+// comentários do personagem (estante, cama, etc.)
+const FLAVOR_LINES = [
+  "Essa estante parece pronta pra cair... melhor não encostar.",
+  "Móveis cobertos de poeira. Ninguém mora aqui há tempos.",
+  "Uma cama desfeita. Como se alguém tivesse saído correndo.",
+  "O cheiro de mofo sobe das tábuas.",
+  "Retratos virados contra a parede. Alguém não queria olhar.",
+  "Uma gaveta aberta... vazia.",
+  "Marcas de unha na madeira. Desespero.",
+  "Esse relógio parou em 3:17.",
+  "Uma xícara rachada ainda com borra de café seco.",
+  "Não deveria estar aqui.",
+];
+
+const DOOR_FLAVOR = {
+  locked: "Trancada. Não abre por enquanto.",
+  open: "A porta range, mas está livre.",
+  beco: "O beco. Preciso da alavanca.",
+  topo: "Porta pesada. Leva a outro lugar... talvez depois.",
+};

@@ -4,9 +4,9 @@ class Player {
   constructor(x, y) {
     this.x = x;
     this.y = y;
-    this.radius = 8;
-    this.footOffset = 12; // colisão na ponta do pé
-    this.speed = 3.4;
+    this.radius = 10;
+    this.footOffset = 16; // colisão na ponta do pé
+    this.speed = 3.6;
     this.sanity = 100;
     this.maxSanity = 100;
 
@@ -47,17 +47,14 @@ class Player {
     this.y = Math.max(16, Math.min(MAP_H - 16, this.y));
   }
 
-  // py aqui é a coordenada Y do CENTRO; colisão usa a ponta do pé
   solidAt(px, py) {
+    // só a ponta do pé — 3 pontos (menos "grudento")
     const footY = py + this.footOffset;
-    const r = this.radius;
-    // pontos só na base (pés), não na cabeça/corpo
+    const r = this.radius * 0.7;
     const pts = [
       [px, footY],
       [px - r, footY],
       [px + r, footY],
-      [px - r * 0.6, footY - 2],
-      [px + r * 0.6, footY - 2],
     ];
     for (const [x, y] of pts) {
       if (typeof isSolid === 'function' && isSolid(x, y)) return true;
@@ -112,73 +109,44 @@ class Player {
 
   // desenha em coordenadas de MUNDO (já transformadas)
   drawWorld(ctx) {
-    const px = this.x;
-    const py = this.y;
-    const bob = Math.sin(this.anim) * 1.6;
-
+    const x = this.x, y = this.y;
+    const sc = 1.45; // personagem maior
     ctx.save();
-    if (this.invincible > 0 && Math.floor(this.invincible / 4) % 2 === 0) {
-      ctx.globalAlpha = 0.4;
-    }
+    ctx.translate(x, y);
+    ctx.scale(sc, sc);
+    ctx.translate(-x, -y);
 
     // sombra
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.beginPath();
-    ctx.ellipse(px, py + 12, 10, 4, 0, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.ellipse(x, y + 14, 9, 4, 0, 0, Math.PI * 2);
     ctx.fill();
-
-    // pernas
-    ctx.fillStyle = '#1a2230';
-    ctx.fillRect(px - 5, py + 2 + bob * 0.3, 4, 11);
-    ctx.fillRect(px + 2, py + 2 - bob * 0.3, 4, 11);
 
     // corpo
-    ctx.fillStyle = '#4a7aaa';
-    ctx.beginPath();
-    ctx.roundRect(px - 8, py - 6 + bob, 16, 13, 3);
-    ctx.fill();
-    ctx.fillStyle = '#2a5070';
-    ctx.fillRect(px - 1, py - 4 + bob, 2, 10);
-
+    ctx.fillStyle = '#3a5a8a';
+    ctx.fillRect(x - 8, y - 4, 16, 16);
     // cabeça
-    ctx.fillStyle = '#e0c0a0';
+    ctx.fillStyle = '#e8c8a0';
     ctx.beginPath();
-    ctx.arc(px, py - 12 + bob, 7, 0, Math.PI * 2);
+    ctx.arc(x, y - 10, 8, 0, Math.PI * 2);
     ctx.fill();
-
     // cabelo
-    ctx.fillStyle = '#1a120c';
+    ctx.fillStyle = '#4a3a2a';
     ctx.beginPath();
-    ctx.arc(px, py - 15 + bob, 6, Math.PI, 0);
+    ctx.arc(x, y - 13, 7, Math.PI, 0);
     ctx.fill();
-
     // olhos
-    ctx.fillStyle = '#111';
-    ctx.beginPath();
-    ctx.arc(px - 2.5, py - 12 + bob, 1.2, 0, Math.PI * 2);
-    ctx.arc(px + 2.5, py - 12 + bob, 1.2, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(x - 4, y - 11, 2, 2);
+    ctx.fillRect(x + 2, y - 11, 2, 2);
+    // pernas
+    ctx.fillStyle = '#2a2a3a';
+    ctx.fillRect(x - 7, y + 12, 5, 6);
+    ctx.fillRect(x + 2, y + 12, 5, 6);
 
-    // contorno branco sutil pra destacar
-    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.arc(px, py - 12 + bob, 7.5, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // lanterna
-    if (this.hasLantern) {
-      const lx = this.facing === 'left' ? px - 14 : px + 10;
-      ctx.fillStyle = this.lanternOn ? '#ffe060' : '#5a4a30';
-      ctx.fillRect(lx, py - 1 + bob, 6, 5);
-      if (this.lanternOn) {
-        ctx.fillStyle = 'rgba(255,230,100,0.9)';
-        ctx.beginPath();
-        ctx.arc(lx + 3, py + 1 + bob, 2.5, 0, Math.PI * 2);
-        ctx.fill();
-      }
+    if (this.invincible > 0 && Math.floor(this.invincible / 3) % 2 === 0) {
+      ctx.globalAlpha = 0.4;
     }
-
     ctx.restore();
   }
 }
