@@ -34,9 +34,9 @@ const MAP_ITEMS = [
 
   // Mansão — hall (acessível após abrir beco)
   { x: 900,  y: 900,  type: 'chave_esq', taken: false },
-  { x: 1100, y: 700,  type: 'lanterna',  taken: false },
+  { x: 1100, y: 700,  type: 'lanterna',  taken: false }, // única no jogo (1º)
   { x: 1300, y: 900,  type: 'cafe',      taken: false },
-  { x: 1000, y: 1050, type: 'faca',      taken: false },
+  { x: 1000, y: 1050, type: 'faca',      taken: false }, // única no jogo (1º)
 
   // Quarto oeste (após chave_esq) → chave_dir
   { x: 250,  y: 500,  type: 'chave_dir', taken: false },
@@ -44,7 +44,7 @@ const MAP_ITEMS = [
 
   // Quarto leste superior (após chave_dir) → chave_dir2
   { x: 1900, y: 250,  type: 'chave_dir2', taken: false },
-  { x: 1850, y: 550,  type: 'lanterna',   taken: false },
+  { x: 1850, y: 550,  type: 'cafe',       taken: false },
 
   // Quarto leste inferior (elite) — extras
   { x: 1950, y: 950,  type: 'cafe',       taken: false },
@@ -185,8 +185,8 @@ const FLOOR2_WINDOWS = [
 // Itens 2º andar (verdes)
 const FLOOR2_ITEMS = [
   { x: 95,   y: 373,  type: 'cafe', taken: false },
-  { x: 2031, y: 326,  type: 'lanterna', taken: false },
-  { x: 313,  y: 799,  type: 'faca', taken: false },
+  { x: 2031, y: 326,  type: 'lanterna', taken: false }, // única
+  { x: 313,  y: 799,  type: 'faca', taken: false },     // única
   { x: 361,  y: 1415, type: 'cafe', taken: false },
   { x: 1366, y: 1522, type: 'chave_boss', taken: false },
   { x: 919,  y: 1519, type: 'cafe', taken: false },
@@ -203,6 +203,20 @@ const FLOOR2_BOSS_DOOR = { x: 2072, y: 799, w: 40, h: 60, locked: true, key: 'ch
 
 // Saída pro 1º #EF88BE
 const FLOOR2_EXIT_F1 = { x: 1129, y: 690, r: 50 };
+
+// Inimigos 2º andar
+const MAP_ENEMIES_F2 = [
+  { x: 300,  y: 400,  type: 'fantasma' },
+  { x: 500,  y: 900,  type: 'vulto' },
+  { x: 400,  y: 1400, type: 'aranha' },
+  { x: 900,  y: 400,  type: 'vulto' },
+  { x: 1300, y: 500,  type: 'fantasma' },
+  { x: 1100, y: 1100, type: 'aranha' },
+  { x: 1700, y: 350,  type: 'fantasma' },
+  { x: 1900, y: 700,  type: 'vulto' },
+  { x: 1800, y: 1300, type: 'aranha' },
+  { x: 1500, y: 1400, type: 'fantasma' },
+];
 
 const KEY_LABELS_EXTRA = {
   chave_boss: 'Chave do Sótão',

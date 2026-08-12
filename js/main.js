@@ -46,6 +46,26 @@ let floor2Items = [];
 let floor2Notes = [];
 let bossDoorUnlocked = false;
 
+// intro cinemática
+let introActive = false;
+let introPhase = 'none'; // zoom_in | story | zoom_out | done
+let introZoom = 3.2;
+let introLine = 0;
+let introChar = 0;
+let introTimer = 0;
+let introFull = '';
+let introPlaying = false;
+const INTRO_TARGET_ZOOM = 1.8;
+const INTRO_START_ZOOM = 3.4;
+const INTRO_LINES = [
+  'Você abre os olhos...',
+  'O bar está vazio. O silêncio pesa no peito.',
+  'Os medos dela ainda habitam esta mansão.',
+  'Não deixe a sanidade chegar a zero.',
+  'Levante-se. Algo se move no escuro.',
+];
+
+
 
 
 
@@ -184,8 +204,116 @@ function loadGame() {
   gameRunning = true;
   document.getElementById('start-screen').classList.add('hidden');
   document.getElementById('gameover-screen').classList.add('hidden');
+  introActive = false;
+  introPhase = 'done';
+  introZoom = INTRO_TARGET_ZOOM;
+  setIntroUI(false);
   showMessage('Jogo carregado.', 2500);
   return true;
+}
+
+
+
+function setIntroUI(show) {
+  const el = document.getElementById('intro-overlay');
+  if (!el) return;
+  if (show) el.classList.remove('hidden');
+  else el.classList.add('hidden');
+}
+
+function startIntroCinematic() {
+  introActive = true;
+  introPhase = 'zoom_in';
+  introZoom = INTRO_START_ZOOM;
+  introLine = 0;
+  introChar = 0;
+  introTimer = 0;
+  introPlaying = false;
+  introFull = '';
+  const it = document.getElementById('intro-text');
+  if (it) it.textContent = '';
+  setIntroUI(true);
+  // player "dormindo" na cadeira do bar
+  if (player) {
+    player.x = 1120;
+    player.y = 1490;
+    player.facing = 'down';
+  }
+}
+
+function skipIntro() {
+  if (!introActive) return;
+  introPhase = 'zoom_out';
+  introPlaying = false;
+  const it = document.getElementById('intro-text');
+  if (it) it.textContent = '';
+}
+
+function advanceIntroLine() {
+  introLine++;
+  if (introLine >= INTRO_LINES.length) {
+    introPhase = 'zoom_out';
+    introPlaying = false;
+    const it = document.getElementById('intro-text');
+    if (it) it.textContent = '';
+    return;
+  }
+  introFull = INTRO_LINES[introLine];
+  introChar = 0;
+  introPlaying = true;
+  introTimer = 0;
+  const it = document.getElementById('intro-text');
+  if (it) it.textContent = '';
+}
+
+function updateIntro() {
+  if (!introActive) return;
+
+  if (introPhase === 'zoom_in') {
+    introZoom += (INTRO_TARGET_ZOOM + 0.55 - introZoom) * 0.04;
+    if (Math.abs(introZoom - (INTRO_TARGET_ZOOM + 0.55)) < 0.03) {
+      introZoom = INTRO_TARGET_ZOOM + 0.55;
+      introPhase = 'story';
+      introLine = 0;
+      introFull = INTRO_LINES[0];
+      introChar = 0;
+      introPlaying = true;
+      introTimer = 0;
+    }
+    return;
+  }
+
+  if (introPhase === 'story') {
+    // typewriter
+    if (introPlaying) {
+      introTimer++;
+      if (introTimer % 2 === 0 && introChar < introFull.length) {
+        introChar++;
+        const it = document.getElementById('intro-text');
+        if (it) it.textContent = introFull.slice(0, introChar);
+      }
+      if (introChar >= introFull.length) {
+        introPlaying = false;
+        introTimer = 0;
+      }
+    } else {
+      introTimer++;
+      // pausa entre linhas
+      if (introTimer > 70) advanceIntroLine();
+    }
+    return;
+  }
+
+  if (introPhase === 'zoom_out') {
+    introZoom += (INTRO_TARGET_ZOOM - introZoom) * 0.05;
+    if (Math.abs(introZoom - INTRO_TARGET_ZOOM) < 0.02) {
+      introZoom = INTRO_TARGET_ZOOM;
+      introPhase = 'done';
+      introActive = false;
+      setIntroUI(false);
+      showMessage('Você acordou no bar...', 2800);
+    }
+  }
 }
 
 
@@ -208,7 +336,8 @@ function initGame() {
   gameRunning = true;
   document.getElementById('start-screen').classList.add('hidden');
   document.getElementById('gameover-screen').classList.add('hidden');
-  showMessage('O bar... Algo brilha atrás da caixa.', 3200);
+  // cinemática de abertura (dormindo no bar)
+  startIntroCinematic();
 }
 
 function onEliteDefeated(x, y) {
@@ -220,8 +349,7 @@ function onEliteDefeated(x, y) {
 
 function goToFloor2() {
   currentFloor = 2;
-  enemies = []; // spawns do 2º depois
-  // spawn perto da saída/escada (rosa)
+  enemies = typeof spawnMapEnemiesFloor2 === 'function' ? spawnMapEnemiesFloor2() : [];
   player.x = 1129;
   player.y = 750;
   floor2Windows = (typeof FLOOR2_WINDOWS !== 'undefined' ? FLOOR2_WINDOWS : []).map(w => ({ ...w }));
@@ -261,9 +389,16 @@ function hitsDynamic(px, py, rad) {
 window.addEventListener('keydown', e => {
   keys[e.key.toLowerCase()] = true;
   if (!gameRunning) return;
+  if (introActive) {
+    if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ' || e.key.toLowerCase() === 'e') {
+      e.preventDefault();
+      skipIntro();
+    }
+    return;
+  }
   if (e.key.toLowerCase() === 'c') {
     debugCollision = !debugCollision;
-    showMessage(debugCollision ? 'DEBUG mapa (C sai)' : 'Debug off', 1200);
+    showMessage(debugCollision ? ('DEBUG ' + (currentFloor===2?'2º':'1º') + ' andar (C sai)') : 'Debug off', 1200);
   }
   if (e.key >= '1' && e.key <= '4') player.selectedSlot = parseInt(e.key) - 1;
   if (e.key === 'Escape') { closeLetter(); return; }
@@ -450,6 +585,13 @@ function updatePrompt() {
   }
 }
 
+function canPickItem(type) {
+  // faca e lanterna: só 1 no inventário (ou já equipada)
+  if (type === 'faca' && player.hasItem('faca')) return false;
+  if (type === 'lanterna' && (player.hasItem('lanterna') || player.hasLantern)) return false;
+  return true;
+}
+
 function interact() {
   if (letterOpen) { closeLetter(); return; }
   const fx = player.x, fy = player.y + player.footOffset;
@@ -470,6 +612,10 @@ function interact() {
     for (const item of floor2Items) {
       if (item.taken) continue;
       if (Math.hypot(fx - item.x, fy - item.y) < 56) {
+        if (!canPickItem(item.type)) {
+          showSpeech('Já tenho isso.');
+          return;
+        }
         if (player.addItem(item.type)) {
           item.taken = true;
           const nome = (KEY_LABELS && KEY_LABELS[item.type]) || item.type;
@@ -532,6 +678,10 @@ function interact() {
   for (const item of items) {
     if (item.taken || item.hidden) continue;
     if (Math.hypot(fx - item.x, fy - item.y) < 56) {
+      if (!canPickItem(item.type)) {
+        showSpeech('Já tenho isso.');
+        return;
+      }
       if (player.addItem(item.type)) {
         item.taken = true;
         const nome = (typeof KEY_LABELS !== 'undefined' && KEY_LABELS[item.type]) ? KEY_LABELS[item.type] : item.type;
@@ -720,6 +870,14 @@ function update() {
   if (!gameRunning) return;
   frame++;
   player.update();
+
+  // intro cinemática — sem controle
+  if (introActive) {
+    updateIntro();
+    updateHUD(player, getZoneName());
+    return;
+  }
+
   let dx = 0, dy = 0;
   if (keys['w'] || keys['arrowup']) dy = -1;
   if (keys['s'] || keys['arrowdown']) dy = 1;
@@ -736,6 +894,14 @@ function update() {
       player.sanity = Math.max(0, player.sanity - 2);
   }
   if (currentFloor === 2) {
+    // janelas abrem/fecham sozinhas de vez em quando
+    if (frame % 180 === 0 && floor2Windows.length) {
+      const w = floor2Windows[Math.floor(Math.random() * floor2Windows.length)];
+      w.open = !w.open;
+      if (Math.hypot(player.x - w.x, player.y - w.y) < 200) {
+        showMessage(w.open ? 'Uma janela se abriu sozinha...' : 'Uma janela bateu...', 1800);
+      }
+    }
     for (const w of floor2Windows) {
       if (w.open && frame % 40 === 0)
         player.sanity = Math.max(0, player.sanity - 3);
@@ -755,37 +921,65 @@ function draw() {
 
   // ===== DEBUG: mapa inteiro + cores =====
   if (debugCollision) {
-    const scale = Math.min(canvas.width / MAP_W, canvas.height / MAP_H);
-    const ox = (canvas.width - MAP_W * scale) / 2;
-    const oy = (canvas.height - MAP_H * scale) / 2;
+    const dw = currentFloor === 2 ? MAP2_W : MAP_W;
+    const dh = currentFloor === 2 ? MAP2_H : MAP_H;
+    const scale = Math.min(canvas.width / dw, canvas.height / dh);
+    const ox = (canvas.width - dw * scale) / 2;
+    const oy = (canvas.height - dh * scale) / 2;
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.save();
     ctx.translate(ox, oy);
     ctx.scale(scale, scale);
     if (currentFloor === 2 && mapImg2 && mapImg2.complete) {
-    ctx.drawImage(mapImg2, 0, 0, MAP2_W, MAP2_H);
-  } else if (mapImg.complete && mapImg.naturalWidth > 0) {
-    ctx.drawImage(mapImg, 0, 0, MAP_W, MAP_H);
-  }
+      ctx.drawImage(mapImg2, 0, 0, MAP2_W, MAP2_H);
+    } else if (mapImg.complete && mapImg.naturalWidth > 0) {
+      ctx.drawImage(mapImg, 0, 0, MAP_W, MAP_H);
+    }
 
-    // mostra o MAPA DE COLISÃO por cores (semi-transparente em cima do visual)
-    if (collReady && collCanvas) {
+    // mapa de colisão do andar atual
+    if (currentFloor === 2 && coll2Ready && collCanvas2) {
+      ctx.globalAlpha = 0.55;
+      ctx.drawImage(collCanvas2, 0, 0, MAP2_W, MAP2_H);
+      ctx.globalAlpha = 1;
+    } else if (collReady && collCanvas) {
       ctx.globalAlpha = 0.55;
       ctx.drawImage(collCanvas, 0, 0, MAP_W, MAP_H);
       ctx.globalAlpha = 1;
     }
-    // itens/notas por cima
-    ctx.fillStyle = 'rgba(0,255,80,0.9)';
-    for (const it of items) {
-      if (it.taken) continue;
-      ctx.beginPath();
-      ctx.arc(it.x, it.y, 8, 0, Math.PI * 2);
-      ctx.fill();
+    // entidades do andar atual
+    if (currentFloor === 2) {
+      ctx.fillStyle = 'rgba(0,255,80,0.9)';
+      for (const it of floor2Items) {
+        if (it.taken) continue;
+        ctx.beginPath(); ctx.arc(it.x, it.y, 8, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.fillStyle = 'rgba(255,0,180,0.9)';
+      for (const n of floor2Notes) ctx.fillRect(n.x - 8, n.y - 6, 16, 12);
+      ctx.fillStyle = 'rgba(0,2,180,0.85)';
+      for (const w of floor2Windows) ctx.fillRect(w.x - 10, w.y - 10, 20, 20);
+      if (typeof FLOOR2_EXIT_F1 !== 'undefined') {
+        ctx.fillStyle = 'rgba(239,136,190,0.9)';
+        ctx.beginPath(); ctx.arc(FLOOR2_EXIT_F1.x, FLOOR2_EXIT_F1.y, 20, 0, Math.PI*2); ctx.fill();
+      }
+      if (typeof FLOOR2_BOSS_DOOR !== 'undefined') {
+        ctx.fillStyle = 'rgba(117,22,63,0.95)';
+        ctx.fillRect(FLOOR2_BOSS_DOOR.x - 15, FLOOR2_BOSS_DOOR.y - 20, 30, 40);
+      }
+    } else {
+      ctx.fillStyle = 'rgba(0,255,80,0.9)';
+      for (const it of items) {
+        if (it.taken || it.hidden) continue;
+        ctx.beginPath(); ctx.arc(it.x, it.y, 8, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.fillStyle = 'rgba(255,0,180,0.9)';
+      for (const n of storyNotes) ctx.fillRect(n.x - 8, n.y - 6, 16, 12);
     }
-    ctx.fillStyle = 'rgba(255,0,180,0.9)';
-    for (const n of storyNotes) {
-      ctx.fillRect(n.x - 8, n.y - 6, 16, 12);
+    // inimigos
+    ctx.fillStyle = 'rgba(255,80,80,0.85)';
+    for (const e of enemies) {
+      if (!e.alive) continue;
+      ctx.beginPath(); ctx.arc(e.x, e.y, 10, 0, Math.PI * 2); ctx.fill();
     }
     // player
     ctx.strokeStyle = '#00ff00';
@@ -813,26 +1007,36 @@ function draw() {
   }
 
   // ===== jogo normal =====
-  const viewW = canvas.width / ZOOM;
-  const viewH = canvas.height / ZOOM;
+  const z = introActive ? introZoom : ZOOM;
+  const viewW = canvas.width / z;
+  const viewH = canvas.height / z;
   let camX = player.x - viewW / 2;
   let camY = player.y - viewH / 2;
   const worldW = currentFloor === 2 ? MAP2_W : MAP_W;
   const worldH = currentFloor === 2 ? MAP2_H : MAP_H;
   camX = Math.max(0, Math.min(worldW - viewW, camX));
   camY = Math.max(0, Math.min(worldH - viewH, camY));
-  const screenPX = (player.x - camX) * ZOOM;
-  const screenPY = (player.y - camY) * ZOOM;
-  const radius = player.vision * ZOOM;
+  const screenPX = (player.x - camX) * z;
+  const screenPY = (player.y - camY) * z;
+  const radius = player.vision * z;
 
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.save();
+  // campo de visão em CONE na direção do player + círculo pequeno pessoal
+  const facingAng = { down: Math.PI/2, up: -Math.PI/2, left: Math.PI, right: 0 }[player.facing] || Math.PI/2;
+  const coneSpread = Math.PI * 0.62; // ~110°
+  const personalR = Math.min(42, radius * 0.28) * (player.lanternOn ? 1.15 : 1);
   ctx.beginPath();
-  ctx.arc(screenPX, screenPY, radius, 0, Math.PI * 2);
+  // círculo pessoal (vê os pés / redor imediato)
+  ctx.arc(screenPX, screenPY, personalR, 0, Math.PI * 2);
+  // cone frontal
+  ctx.moveTo(screenPX, screenPY);
+  ctx.arc(screenPX, screenPY, radius, facingAng - coneSpread/2, facingAng + coneSpread/2);
+  ctx.closePath();
   ctx.clip();
   ctx.save();
-  ctx.scale(ZOOM, ZOOM);
+  ctx.scale(z, z);
   ctx.translate(-camX, -camY);
   if (currentFloor === 2 && mapImg2 && mapImg2.complete) {
     ctx.drawImage(mapImg2, 0, 0, MAP2_W, MAP2_H);
@@ -966,7 +1170,7 @@ function draw() {
   ctx.fill();
 
   ctx.save();
-  ctx.scale(ZOOM, ZOOM);
+  ctx.scale(z, z);
   ctx.translate(-camX, -camY);
   player.drawWorld(ctx);
   ctx.restore();
@@ -999,3 +1203,5 @@ window.addEventListener('focus', () => {
   if (b) b.classList.toggle('hidden', !hasSave());
 });
 loop();
+
+document.getElementById('btn-skip-intro')?.addEventListener('click', skipIntro);

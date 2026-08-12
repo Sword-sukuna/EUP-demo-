@@ -1,4 +1,4 @@
-// ========== INIMIGOS COM SPRITES ==========
+// ========== INIMIGOS — IA melhorada ==========
 
 const ENEMY_SPRITE_CACHE = {};
 
@@ -28,14 +28,16 @@ class Enemy {
     this.phase = 0;
     this.state = 'parado';
     this.facing = 1;
-    this.lastX = x;
+    this.aggro = false;
+    this.idleTimer = Math.random() * 120;
+    this.idleDX = 0;
+    this.idleDY = 0;
 
-    // mais fortes
     const stats = {
-      fantasma: { hp: 45, speed: 1.15, damage: 10, size: 20, range: 180 },
-      vulto:    { hp: 35, speed: 1.55, damage: 14, size: 18, range: 150 },
-      aranha:   { hp: 55, speed: 1.4,  damage: 12, size: 22, range: 170 },
-      elite:    { hp: 140, speed: 0.95, damage: 22, size: 30, range: 220 }
+      fantasma: { hp: 45, speed: 1.05, damage: 10, size: 20, alert: 85, chase: 160 },
+      vulto:    { hp: 35, speed: 1.4,  damage: 14, size: 18, alert: 75, chase: 140 },
+      aranha:   { hp: 55, speed: 1.25, damage: 12, size: 22, alert: 90, chase: 155 },
+      elite:    { hp: 140, speed: 0.9, damage: 22, size: 30, alert: 100, chase: 200 }
     };
     const s = stats[type] || stats.fantasma;
     Object.assign(this, s);
@@ -43,7 +45,7 @@ class Enemy {
 
     if (type === 'aranha') {
       this.sprites = loadEnemySprites('aranha', 'aranha');
-      this.flipInvert = true; // sprite original olha pra esquerda
+      this.flipInvert = true;
     } else if (type === 'elite') {
       this.sprites = loadEnemySprites('manequim', 'manequim');
       this.flipInvert = false;
@@ -55,37 +57,58 @@ class Enemy {
 
   update(player) {
     if (!this.alive) return;
-    this.anim += 0.14;
+    this.anim += 0.12;
     if (this.flash > 0) {
       this.flash--;
       this.state = 'dano';
     }
-
     if (this.type === 'vulto') this.phase = (this.phase + 1) % 90;
 
     const dx = player.x - this.x;
     const dy = player.y - this.y;
     const dist = Math.hypot(dx, dy);
-    const range = this.range + (100 - player.sanity) * 0.7;
 
-    // facing pela direção do MOVIMENTO (não só olhar pro player)
-    if (dist < range && dist > 14) {
-      const sp = this.speed;
-      const mx = (dx / dist) * sp;
-      const my = (dy / dist) * sp;
-      if (Math.abs(mx) > 0.05) this.facing = mx > 0 ? 1 : -1;
+    // sanidade baixa = inimigos mais alertas
+    const alertR = this.alert + (100 - player.sanity) * 0.35;
+    const chaseR = this.chase + (100 - player.sanity) * 0.5;
+    const loseR = chaseR * 1.25;
 
-      this.state = this.flash > 0 ? 'dano' : 'andando';
-      const nx = this.x + mx;
-      const ny = this.y + my;
-      if (!this.blocked(nx, this.y)) this.x = nx;
-      if (!this.blocked(this.x, ny)) this.y = ny;
-    } else if (dist < this.size + 14) {
-      this.state = 'batendo';
-      if (dx !== 0) this.facing = dx > 0 ? 1 : -1;
-      player.takeDamage(this.damage * 0.16);
+    // entra em aggro só se o jogador chegar perto
+    if (!this.aggro && dist < alertR) this.aggro = true;
+    // perde aggro se fugir longe
+    if (this.aggro && dist > loseR) this.aggro = false;
+
+    if (this.aggro && dist < chaseR) {
+      // PERSEGUE
+      if (dist < this.size + 14) {
+        this.state = 'batendo';
+        if (dx !== 0) this.facing = dx > 0 ? 1 : -1;
+        player.takeDamage(this.damage * 0.14);
+      } else if (dist > 12) {
+        this.state = this.flash > 0 ? 'dano' : 'andando';
+        const sp = this.speed;
+        const mx = (dx / dist) * sp;
+        const my = (dy / dist) * sp;
+        if (Math.abs(mx) > 0.05) this.facing = mx > 0 ? 1 : -1;
+        if (!this.blocked(this.x + mx, this.y)) this.x += mx;
+        if (!this.blocked(this.x, this.y + my)) this.y += my;
+      }
     } else {
-      if (this.flash <= 0) this.state = 'parado';
+      // IDLE / patrulha lenta — NÃO ataca de longe
+      this.state = this.flash > 0 ? 'dano' : 'parado';
+      this.idleTimer--;
+      if (this.idleTimer <= 0) {
+        this.idleTimer = 60 + Math.random() * 100;
+        const a = Math.random() * Math.PI * 2;
+        this.idleDX = Math.cos(a) * 0.35;
+        this.idleDY = Math.sin(a) * 0.35;
+        if (Math.abs(this.idleDX) > 0.05) this.facing = this.idleDX > 0 ? 1 : -1;
+      }
+      if (this.idleTimer > 40) {
+        this.state = 'andando';
+        if (!this.blocked(this.x + this.idleDX, this.y)) this.x += this.idleDX;
+        if (!this.blocked(this.x, this.y + this.idleDY)) this.y += this.idleDY;
+      }
     }
   }
 
@@ -100,9 +123,9 @@ class Enemy {
     this.hp -= n;
     this.flash = 10;
     this.state = 'dano';
+    this.aggro = true; // bater nele chama atenção
     if (this.hp <= 0) {
       this.alive = false;
-      // elite dropa carta do 2º andar
       if (this.type === 'elite' && typeof onEliteDefeated === 'function') {
         onEliteDefeated(this.x, this.y);
       }
@@ -136,7 +159,6 @@ class Enemy {
       const w = img.naturalWidth * scale;
       const h = img.naturalHeight * scale;
       ctx.translate(sx, sy);
-      // aranha: inverte o flip porque o sprite base olha pra outro lado
       let flip = this.facing < 0;
       if (this.flipInvert) flip = !flip;
       if (flip) ctx.scale(-1, 1);
@@ -161,8 +183,10 @@ class Enemy {
 }
 
 function spawnMapEnemies() {
-  // no bar (y > 1350) não spawna — só mansão
-  return MAP_ENEMIES
-    .filter(e => e.y < 1350)
-    .map(e => new Enemy(e.x, e.y, e.type));
+  return MAP_ENEMIES.filter(e => e.y < 1350).map(e => new Enemy(e.x, e.y, e.type));
+}
+
+function spawnMapEnemiesFloor2() {
+  if (typeof MAP_ENEMIES_F2 === 'undefined') return [];
+  return MAP_ENEMIES_F2.map(e => new Enemy(e.x, e.y, e.type));
 }
