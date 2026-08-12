@@ -1,18 +1,24 @@
-// ========== MAPA 2176x1632 — cores do designer ==========
+// ========== MAPA 2176x1632 — progressão em cadeia ==========
 const MAP_W = 2176;
 const MAP_H = 1632;
+// 2º andar (com colisão + janelas)
+const MAP2_W = 2176;
+const MAP2_H = 1624;
 
 const OBJECT_SOLIDS = [];
 
-// Portas AZUIS trancadas — cada uma exige chave específica
+// Portas AZUIS — cadeia de chaves
+// 1) chave_beco (puzzle no bar) → entra na mansão
+// 2) chave_esq (hall) → quarto oeste
+// 3) chave_dir (quarto oeste) → quarto leste superior
+// 4) chave_dir2 (quarto leste) → quarto leste inferior (elite)
 const DOORS = [
-  { id: 'porta_esq',   x: 593,  y: 503, w: 8,   h: 84,  locked: true, key: 'chave_esq',   label: 'Porta do corredor oeste' },
-  { id: 'porta_dir_s', x: 1778, y: 362, w: 100, h: 8,   locked: true, key: 'chave_dir',   label: 'Porta do corredor leste' },
-  { id: 'porta_dir_i', x: 1666, y: 834, w: 21,  h: 79,  locked: true, key: 'chave_dir2',  label: 'Porta inferior leste' },
-  { id: 'porta_beco',  x: 1064, y: 1318,w: 138, h: 34,  locked: true, key: 'chave_beco',  label: 'Porta do beco' },
+  { id: 'porta_beco',  x: 1064, y: 1318, w: 138, h: 34, locked: true, key: 'chave_beco', label: 'Porta do beco (Bar → Mansão)' },
+  { id: 'porta_esq',   x: 593,  y: 503,  w: 8,   h: 84, locked: true, key: 'chave_esq',  label: 'Porta do corredor oeste' },
+  { id: 'porta_dir_s', x: 1778, y: 362,  w: 100, h: 8,  locked: true, key: 'chave_dir',  label: 'Porta do corredor leste' },
+  { id: 'porta_dir_i', x: 1666, y: 834,  w: 21,  h: 79, locked: true, key: 'chave_dir2', label: 'Porta do quarto do Elite' },
 ];
 
-// Portas MARRONS (livres) — só flavor
 const DOORS_FREE = [
   { x: 651,  y: 400, label: 'Passagem' },
   { x: 1608, y: 398, label: 'Passagem' },
@@ -21,36 +27,45 @@ const DOORS_FREE = [
   { x: 585,  y: 883, label: 'Passagem' },
 ];
 
-// Itens VERDES
+// Itens — ordem de coleta (cadeia)
 const MAP_ITEMS = [
-  { x: 253,  y: 224, type: 'cafe',        taken: false },
-  { x: 1779, y: 179, type: 'lanterna',    taken: false },
-  { x: 187,  y: 563, type: 'chave_esq',   taken: false },
-  { x: 1858, y: 609, type: 'chave_dir',   taken: false },
-  { x: 411,  y: 944, type: 'chave_beco',  taken: false },
-  { x: 1996, y: 917, type: 'chave_dir2',  taken: false },
-  { x: 253,  y: 224, type: 'faca',        taken: false }, // extra near cafe - skip duplicate
-];
-// fix: separate faca
-MAP_ITEMS.length = 0;
-MAP_ITEMS.push(
-  // --- área aberta do hall (acessível desde o início) ---
-  { x: 1000, y: 850, type: 'chave_esq',  taken: false },
-  { x: 1200, y: 850, type: 'chave_dir',  taken: false },
-  { x: 1100, y: 1000, type: 'chave_dir2', taken: false },
-  { x: 1050, y: 780, type: 'chave_beco', taken: false },
-  { x: 1150, y: 780, type: 'lanterna',   taken: false },
-  { x: 980,  y: 950, type: 'cafe',       taken: false },
-  { x: 1220, y: 950, type: 'faca',       taken: false },
-  // extras nos quartos (se o jogador explorar)
-  { x: 253,  y: 224, type: 'cafe',       taken: false },
-  { x: 1779, y: 179, type: 'lanterna',   taken: false }
-);
+  // BAR: chave só aparece depois do puzzle (hidden até empurrar o baú)
+  { x: 1180, y: 1520, type: 'chave_beco', taken: false, hidden: true, id: 'key_bar' },
 
-// Interações BRANCAS — fala específica por posição
+  // Mansão — hall (acessível após abrir beco)
+  { x: 900,  y: 900,  type: 'chave_esq', taken: false },
+  { x: 1100, y: 700,  type: 'lanterna',  taken: false },
+  { x: 1300, y: 900,  type: 'cafe',      taken: false },
+  { x: 1000, y: 1050, type: 'faca',      taken: false },
+
+  // Quarto oeste (após chave_esq) → chave_dir
+  { x: 250,  y: 500,  type: 'chave_dir', taken: false },
+  { x: 280,  y: 250,  type: 'cafe',      taken: false },
+
+  // Quarto leste superior (após chave_dir) → chave_dir2
+  { x: 1900, y: 250,  type: 'chave_dir2', taken: false },
+  { x: 1850, y: 550,  type: 'lanterna',   taken: false },
+
+  // Quarto leste inferior (elite) — extras
+  { x: 1950, y: 950,  type: 'cafe',       taken: false },
+];
+
+// Caixa empurrável no bar (puzzle)
+const PUSHABLES = [
+  {
+    id: 'caixa_bar',
+    x: 1180, y: 1480,
+    w: 36, h: 36,
+    pushed: false,
+    // ao empurrar para a esquerda, revela a chave
+    revealItemId: 'key_bar',
+    label: 'Caixa pesada',
+  },
+];
+
 const INTERACTABLES = [
-  // fogueira (cor #880015)
-  { x: 302, y: 1033, type: 'fogueira', r: 50, label: 'Fogueira' },
+  // fogueira — checkpoint / save (hall da mansão)
+  { x: 1100, y: 850, type: 'fogueira', r: 55, label: 'Fogueira' },
 
   // quartos esq
   { x: 362, y: 208, type: 'flavor', r: 55, text: 'Uma cama desfeita. Como se alguém tivesse saído correndo.' },
@@ -59,7 +74,7 @@ const INTERACTABLES = [
   { x: 485, y: 774, type: 'flavor', r: 50, text: 'Gavetas abertas... vazias.' },
   { x: 209, y: 932, type: 'flavor', r: 50, text: 'Roupas jogadas no chão. Cheiro de mofo.' },
 
-  // hall / centro
+  // hall
   { x: 904,  y: 763, type: 'flavor', r: 55, text: 'Um sofá antigo. As molas gritam se você sentar.' },
   { x: 1344, y: 770, type: 'flavor', r: 55, text: 'Retratos virados contra a parede. Alguém não queria olhar.' },
   { x: 711,  y: 151, type: 'flavor', r: 40, text: 'Um vaso rachado. Terra seca.' },
@@ -77,36 +92,47 @@ const INTERACTABLES = [
   { x: 1127, y: 1498, type: 'flavor', r: 60, text: 'O balcão do bar. Ainda tem copos sujos.' },
   { x: 1002, y: 1402, type: 'flavor', r: 40, text: 'Banquinhos altos. Um está quebrado.' },
   { x: 1265, y: 1405, type: 'flavor', r: 40, text: 'Prateleira de garrafas. Todas vazias.' },
-  { x: 1296, y: 1570, type: 'flavor', r: 40, text: 'Uma mesa no canto. Cinzeiro cheio.' },
+  { x: 1296, y: 1570, type: 'flavor', r: 40, text: 'Uma mesa no canto. Cinzeiro cheio. Algo brilha atrás da caixa...' },
 
-  // alavanca / bau (lógica)
-  { x: 200, y: 550, type: 'alavanca', r: 35, label: 'Alavanca', on: false },
-  { x: 1928, y: 200, type: 'bau', r: 40, label: 'Baú', locked: true },
+  // baú no quarto elite (opcional)
+  { x: 2000, y: 900, type: 'bau', r: 40, label: 'Baú', locked: true },
 ];
 
-// Cartas MAGENTA
 const STORY_NOTES = [
-  { x: 587,  y: 222, id: 'n1', text: 'Carta rasgada:\n\n"A alavanca no quarto oeste...\nela abre caminhos que deveriam permanecer fechados."', read: false },
+  { x: 587,  y: 222, id: 'n1', text: 'Carta rasgada:\n\n"As chaves se escondem em cadeia.\nUma porta abre o caminho para a próxima."', read: false },
   { x: 1137, y: 218, id: 'n2', text: 'Bilhete:\n\n"Não confie no que as paredes sussurram.\nSanidade é tudo o que nos resta."', read: false },
   { x: 2065, y: 194, id: 'n3', text: 'Página de diário:\n\n"Ela ainda anda pelos corredores.\nEu ouço os passos toda noite."', read: false },
-  { x: 1739, y: 558, id: 'n4', text: 'Nota:\n\n"Chave do beco — quarto de baixo, lado esquerdo.\nNão abra as janelas."', read: false },
-  { x: 1139, y: 1561, id: 'n5', text: 'Recado no bar:\n\n"Foi aqui que nos vimos pela última vez.\nO café ainda estava quente."', read: false },
+  { x: 1739, y: 558, id: 'n4', text: 'Nota:\n\n"O manequim guarda o segredo do segundo andar.\nDerrote-o e a carta será sua."', read: false },
+  { x: 1139, y: 1561, id: 'n5', text: 'Recado no bar:\n\n"Empurre a caixa. A saída está escondida.\n— Foi aqui que nos vimos pela última vez."', read: false },
 ];
 
 const STAIRS = [
-  { x: 833, y: 484, w: 120, h: 160, label: 'Escadas (2º andar)', locked: true },
+  { x: 833,  y: 484, w: 120, h: 160, label: 'Escadas (2º andar)', locked: true },
   { x: 1326, y: 500, w: 110, h: 150, label: 'Escadas (2º andar)', locked: true },
 ];
 
+// Inimigos mais fortes + mais spawns (sem bar no início — só mansão)
 const MAP_ENEMIES = [
-  { x: 300, y: 300, type: 'fantasma' },
-  { x: 280, y: 700, type: 'vulto' },
-  { x: 350, y: 1000, type: 'fantasma' },
-  { x: 1800, y: 300, type: 'aranha' },
-  { x: 1850, y: 700, type: 'vulto' },
-  { x: 1800, y: 1000, type: 'fantasma' },
-  { x: 1100, y: 600, type: 'vulto' },
-  { x: 1200, y: 1450, type: 'elite' },
+  // oeste
+  { x: 300,  y: 280,  type: 'fantasma' },
+  { x: 350,  y: 520,  type: 'vulto' },
+  { x: 280,  y: 750,  type: 'aranha' },
+  { x: 400,  y: 950,  type: 'fantasma' },
+  // centro
+  { x: 900,  y: 550,  type: 'vulto' },
+  { x: 1100, y: 650,  type: 'fantasma' },
+  { x: 1300, y: 550,  type: 'aranha' },
+  { x: 1000, y: 950,  type: 'vulto' },
+  { x: 1200, y: 1100, type: 'fantasma' },
+  // leste
+  { x: 1800, y: 280,  type: 'aranha' },
+  { x: 1900, y: 500,  type: 'vulto' },
+  { x: 1850, y: 750,  type: 'fantasma' },
+  { x: 1950, y: 900,  type: 'aranha' },
+  // elite — quarto final (leste inferior)
+  { x: 1850, y: 950,  type: 'elite' },
+  // beco
+  { x: 1100, y: 1250, type: 'vulto' },
 ];
 
 const ZONES = [
@@ -120,6 +146,7 @@ const ZONES = [
   { name: 'Quarto', x: 1600, y: 750, w: 576, h: 400 },
   { name: 'Beco', x: 900, y: 1200, w: 400, h: 150 },
   { name: 'Bar', x: 700, y: 1350, w: 700, h: 280 },
+  { name: '2º Andar', x: 0, y: 0, w: 2176, h: 1624 },
 ];
 
 const MAP_OBJECTS = INTERACTABLES;
@@ -127,9 +154,57 @@ const MAP_OBJECTS = INTERACTABLES;
 const KEY_LABELS = {
   chave_esq: 'Chave Oeste',
   chave_dir: 'Chave Leste',
-  chave_dir2: 'Chave Leste II',
-  chave_beco: 'Chave do Beco',
+  chave_dir2: 'Chave do Elite',
+  chave_beco: 'Chave da Mansão',
+  carta_2andar: 'Carta do 2º Andar',
   cafe: 'Café',
   faca: 'Faca',
   lanterna: 'Lanterna',
 };
+
+const FLAVOR_LINES = [
+  'Nada de especial...',
+  'O cheiro de mofo sobe das tábuas.',
+  'Não deveria estar aqui.',
+];
+
+
+// ========== 2º ANDAR ==========
+// Janelas #00023D — abrem/fecham e drenam sanidade quando abertas
+const FLOOR2_WINDOWS = [
+  { x: 41,   y: 568,  open: false },
+  { x: 57,   y: 992,  open: false },
+  { x: 2144, y: 1079, open: false },
+  { x: 393,  y: 1559, open: false },
+  { x: 1465, y: 1566, open: false },
+  { x: 1262, y: 1566, open: false },
+  { x: 1129, y: 1572, open: false },
+  { x: 234,  y: 1575, open: false },
+];
+
+// Itens 2º andar (verdes)
+const FLOOR2_ITEMS = [
+  { x: 95,   y: 373,  type: 'cafe', taken: false },
+  { x: 2031, y: 326,  type: 'lanterna', taken: false },
+  { x: 313,  y: 799,  type: 'faca', taken: false },
+  { x: 361,  y: 1415, type: 'cafe', taken: false },
+  { x: 1366, y: 1522, type: 'chave_boss', taken: false },
+  { x: 919,  y: 1519, type: 'cafe', taken: false },
+];
+
+// Notas 2º andar
+const FLOOR2_NOTES = [
+  { x: 700, y: 400, id: 'f2n1', text: "Diário:\n\n\"O sótão guarda o que não deveria existir.\nA porta escura só abre com a chave certa.\"", read: false },
+  { x: 1800, y: 500, id: 'f2n2', text: "Bilhete:\n\n\"As janelas... não as deixe abertas.\nO frio come a mente.\"", read: false },
+];
+
+// Porta boss #75163F
+const FLOOR2_BOSS_DOOR = { x: 2072, y: 799, w: 40, h: 60, locked: true, key: 'chave_boss', label: 'Porta do Sótão' };
+
+// Saída pro 1º #EF88BE
+const FLOOR2_EXIT_F1 = { x: 1129, y: 690, r: 50 };
+
+const KEY_LABELS_EXTRA = {
+  chave_boss: 'Chave do Sótão',
+};
+Object.assign(KEY_LABELS, KEY_LABELS_EXTRA);

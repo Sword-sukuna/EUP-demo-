@@ -26,33 +26,36 @@ class Enemy {
     this.flash = 0;
     this.anim = Math.random() * 10;
     this.phase = 0;
-    this.state = 'parado'; // parado | andando | batendo | dano
-    this.facing = 1; // 1 right, -1 left
+    this.state = 'parado';
+    this.facing = 1;
+    this.lastX = x;
 
+    // mais fortes
     const stats = {
-      fantasma: { hp: 30, speed: 0.95, damage: 6, size: 20, range: 160 },
-      vulto:    { hp: 22, speed: 1.35, damage: 9, size: 18, range: 130 },
-      aranha:   { hp: 40, speed: 1.2,  damage: 8, size: 22, range: 150 },
-      elite:    { hp: 80, speed: 0.75, damage: 14, size: 28, range: 200 }
+      fantasma: { hp: 45, speed: 1.15, damage: 10, size: 20, range: 180 },
+      vulto:    { hp: 35, speed: 1.55, damage: 14, size: 18, range: 150 },
+      aranha:   { hp: 55, speed: 1.4,  damage: 12, size: 22, range: 170 },
+      elite:    { hp: 140, speed: 0.95, damage: 22, size: 30, range: 220 }
     };
     const s = stats[type] || stats.fantasma;
     Object.assign(this, s);
     this.maxHp = this.hp;
 
-    // sprites
     if (type === 'aranha') {
       this.sprites = loadEnemySprites('aranha', 'aranha');
+      this.flipInvert = true; // sprite original olha pra esquerda
     } else if (type === 'elite') {
       this.sprites = loadEnemySprites('manequim', 'manequim');
+      this.flipInvert = false;
     } else {
-      // fantasma + vulto
       this.sprites = loadEnemySprites('fantasma', 'fantasma');
+      this.flipInvert = false;
     }
   }
 
   update(player) {
     if (!this.alive) return;
-    this.anim += 0.12;
+    this.anim += 0.14;
     if (this.flash > 0) {
       this.flash--;
       this.state = 'dano';
@@ -63,21 +66,24 @@ class Enemy {
     const dx = player.x - this.x;
     const dy = player.y - this.y;
     const dist = Math.hypot(dx, dy);
-    const range = this.range + (100 - player.sanity) * 0.6;
+    const range = this.range + (100 - player.sanity) * 0.7;
 
-    if (dx !== 0) this.facing = dx > 0 ? 1 : -1;
-
-    if (dist < this.size + 12) {
-      // ataque corpo a corpo
-      this.state = 'batendo';
-      player.takeDamage(this.damage * 0.12);
-    } else if (dist < range && dist > 14) {
-      this.state = this.flash > 0 ? 'dano' : 'andando';
+    // facing pela direção do MOVIMENTO (não só olhar pro player)
+    if (dist < range && dist > 14) {
       const sp = this.speed;
-      const nx = this.x + (dx / dist) * sp;
-      const ny = this.y + (dy / dist) * sp;
+      const mx = (dx / dist) * sp;
+      const my = (dy / dist) * sp;
+      if (Math.abs(mx) > 0.05) this.facing = mx > 0 ? 1 : -1;
+
+      this.state = this.flash > 0 ? 'dano' : 'andando';
+      const nx = this.x + mx;
+      const ny = this.y + my;
       if (!this.blocked(nx, this.y)) this.x = nx;
       if (!this.blocked(this.x, ny)) this.y = ny;
+    } else if (dist < this.size + 14) {
+      this.state = 'batendo';
+      if (dx !== 0) this.facing = dx > 0 ? 1 : -1;
+      player.takeDamage(this.damage * 0.16);
     } else {
       if (this.flash <= 0) this.state = 'parado';
     }
@@ -94,14 +100,19 @@ class Enemy {
     this.hp -= n;
     this.flash = 10;
     this.state = 'dano';
-    if (this.hp <= 0) this.alive = false;
+    if (this.hp <= 0) {
+      this.alive = false;
+      // elite dropa carta do 2º andar
+      if (this.type === 'elite' && typeof onEliteDefeated === 'function') {
+        onEliteDefeated(this.x, this.y);
+      }
+    }
   }
 
   _frame() {
     const frames = (this.sprites && this.sprites[this.state]) || (this.sprites && this.sprites.parado) || [];
     if (!frames.length) return null;
-    const i = Math.floor(this.anim) % frames.length;
-    return frames[i];
+    return frames[Math.floor(this.anim) % frames.length];
   }
 
   drawWorld(ctx) {
@@ -115,21 +126,22 @@ class Enemy {
     if (this.type === 'vulto') ctx.globalAlpha = 0.7;
     if (this.flash > 0) ctx.globalAlpha = 0.55;
 
-    // sombra
     ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.beginPath();
     ctx.ellipse(sx, sy + 12, this.size * 0.4, 4, 0, 0, Math.PI * 2);
     ctx.fill();
 
     if (img && img.complete && img.naturalWidth > 0) {
-      const scale = this.type === 'elite' ? 1.2 : (this.type === 'aranha' ? 1.0 : 1.1);
+      const scale = this.type === 'elite' ? 1.25 : (this.type === 'aranha' ? 1.05 : 1.1);
       const w = img.naturalWidth * scale;
       const h = img.naturalHeight * scale;
       ctx.translate(sx, sy);
-      if (this.facing < 0) ctx.scale(-1, 1);
+      // aranha: inverte o flip porque o sprite base olha pra outro lado
+      let flip = this.facing < 0;
+      if (this.flipInvert) flip = !flip;
+      if (flip) ctx.scale(-1, 1);
       ctx.drawImage(img, -w / 2, -h + 14, w, h);
     } else {
-      // fallback
       ctx.fillStyle = this.flash ? '#fff' : '#7a7aa0';
       ctx.beginPath();
       ctx.arc(sx, sy, this.size * 0.4, 0, Math.PI * 2);
@@ -149,5 +161,8 @@ class Enemy {
 }
 
 function spawnMapEnemies() {
-  return MAP_ENEMIES.map(e => new Enemy(e.x, e.y, e.type));
+  // no bar (y > 1350) não spawna — só mansão
+  return MAP_ENEMIES
+    .filter(e => e.y < 1350)
+    .map(e => new Enemy(e.x, e.y, e.type));
 }

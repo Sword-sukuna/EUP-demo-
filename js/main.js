@@ -6,9 +6,24 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const mapImg = new Image();
 mapImg.src = 'assets/mapa-mansao.jpg';
+const mapImg2 = new Image();
+mapImg2.src = 'assets/mapa-mansao-2andar.jpg';
+const cartaImg = new Image();
+cartaImg.src = 'assets/sprites/carta/carta_64.png';
+const windowClosedImg = new Image();
+windowClosedImg.src = 'assets/sprites/window/window_closed.png';
+const windowOpenImg = new Image();
+windowOpenImg.src = 'assets/sprites/window/window_open.png';
+
+
+
 const collImg = new Image();
 collImg.src = 'assets/collision-map.png';
 collImg.onload = () => initCollisionMap(collImg);
+const collImg2 = new Image();
+collImg2.src = 'assets/collision-map-2.png';
+collImg2.onload = () => initCollisionMap2(collImg2);
+
 const ZOOM = 1.8;
 
 let player, enemies = [];
@@ -24,9 +39,159 @@ let debugCollision = false;
 let speechTimer = null;
 let letterOpen = false;
 let typewriterTimer = null;
+let currentFloor = 1; // 1 = térreo, 2 = segundo
+let pushables = [];
+let floor2Windows = [];
+let floor2Items = [];
+let floor2Notes = [];
+let bossDoorUnlocked = false;
+
+
+
+
+const SAVE_KEY = 'eup_demo_save_v1';
+
+function saveGame() {
+  if (!player) return;
+  const data = {
+    floor: currentFloor,
+    x: player.x,
+    y: player.y,
+    sanity: player.sanity,
+    inventory: player.inventory.slice(),
+    hasLantern: player.hasLantern,
+    lanternOn: player.lanternOn,
+    unlockedDoors: unlockedDoors.slice(),
+    items: items.map(i => ({ id: i.id || null, type: i.type, taken: !!i.taken, hidden: !!i.hidden, x: i.x, y: i.y })),
+    pushables: pushables.map(b => ({ id: b.id, x: b.x, y: b.y, pushed: !!b.pushed, revealItemId: b.revealItemId })),
+    notes: storyNotes.map(n => ({ id: n.id, read: !!n.read })),
+    doors: doors.map(d => ({ id: d.id, locked: !!d.locked })),
+    chestOpened: !!chestOpened,
+    bossDoorUnlocked: !!bossDoorUnlocked,
+    floor2Windows: floor2Windows.map(w => ({ x: w.x, y: w.y, open: !!w.open })),
+    floor2Items: floor2Items.map(i => ({ type: i.type, taken: !!i.taken, x: i.x, y: i.y })),
+    floor2Notes: floor2Notes.map(n => ({ id: n.id, read: !!n.read })),
+  };
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    return true;
+  } catch (e) {
+    console.warn('save failed', e);
+    return false;
+  }
+}
+
+function hasSave() {
+  try { return !!localStorage.getItem(SAVE_KEY); } catch (e) { return false; }
+}
+
+function loadGame() {
+  let raw;
+  try { raw = localStorage.getItem(SAVE_KEY); } catch (e) { return false; }
+  if (!raw) return false;
+  let data;
+  try { data = JSON.parse(raw); } catch (e) { return false; }
+
+  // base reset then apply
+  currentFloor = data.floor || 1;
+  player = new Player(data.x || 1100, data.y || 1480);
+  player.sanity = data.sanity != null ? data.sanity : 100;
+  player.inventory = (data.inventory || [null,null,null,null]).slice(0, 4);
+  while (player.inventory.length < 4) player.inventory.push(null);
+  player.hasLantern = !!data.hasLantern;
+  player.lanternOn = !!data.lanternOn;
+
+  items = MAP_ITEMS.map(i => ({ ...i, taken: false }));
+  if (data.items) {
+    for (const s of data.items) {
+      const match = items.find(it => (s.id && it.id === s.id) || (it.type === s.type && Math.hypot(it.x - s.x, it.y - s.y) < 5));
+      if (match) {
+        match.taken = !!s.taken;
+        match.hidden = s.hidden != null ? !!s.hidden : match.hidden;
+      }
+    }
+  }
+  // also restore dropped carta etc that aren't in MAP_ITEMS
+  if (data.items) {
+    for (const s of data.items) {
+      if (s.type === 'carta_2andar' && !s.taken) {
+        const exists = items.some(it => it.type === 'carta_2andar' && Math.hypot(it.x - s.x, it.y - s.y) < 5);
+        if (!exists) items.push({ x: s.x, y: s.y, type: 'carta_2andar', taken: false });
+      }
+    }
+  }
+
+  interactables = INTERACTABLES.map(o => ({ ...o }));
+  storyNotes = STORY_NOTES.map(n => ({ ...n, read: false }));
+  if (data.notes) {
+    for (const sn of data.notes) {
+      const n = storyNotes.find(x => x.id === sn.id);
+      if (n) n.read = !!sn.read;
+    }
+  }
+  doors = DOORS.map(d => ({ ...d }));
+  if (data.doors) {
+    for (const sd of data.doors) {
+      const d = doors.find(x => x.id === sd.id);
+      if (d) d.locked = !!sd.locked;
+    }
+  }
+  objectSolids = OBJECT_SOLIDS.map(o => ({ ...o }));
+  stairs = STAIRS.map(s => ({ ...s }));
+  pushables = (typeof PUSHABLES !== 'undefined' ? PUSHABLES : []).map(p => ({ ...p }));
+  if (data.pushables) {
+    for (const sb of data.pushables) {
+      const b = pushables.find(x => x.id === sb.id);
+      if (b) { b.pushed = !!sb.pushed; b.x = sb.x; b.y = sb.y; }
+    }
+  }
+  unlockedDoors = (data.unlockedDoors || []).slice();
+  chestOpened = !!data.chestOpened;
+  bossDoorUnlocked = !!data.bossDoorUnlocked;
+
+  if (currentFloor === 2) {
+    floor2Windows = (typeof FLOOR2_WINDOWS !== 'undefined' ? FLOOR2_WINDOWS : []).map(w => ({ ...w }));
+    floor2Items = (typeof FLOOR2_ITEMS !== 'undefined' ? FLOOR2_ITEMS : []).map(i => ({ ...i }));
+    floor2Notes = (typeof FLOOR2_NOTES !== 'undefined' ? FLOOR2_NOTES : []).map(n => ({ ...n }));
+    if (data.floor2Windows) {
+      for (let i = 0; i < floor2Windows.length; i++) {
+        if (data.floor2Windows[i]) floor2Windows[i].open = !!data.floor2Windows[i].open;
+      }
+    }
+    if (data.floor2Items) {
+      for (const si of data.floor2Items) {
+        const it = floor2Items.find(x => x.type === si.type && Math.hypot(x.x - si.x, x.y - si.y) < 5);
+        if (it) it.taken = !!si.taken;
+      }
+    }
+    if (data.floor2Notes) {
+      for (const sn of data.floor2Notes) {
+        const n = floor2Notes.find(x => x.id === sn.id);
+        if (n) n.read = !!sn.read;
+      }
+    }
+    enemies = [];
+  } else {
+    floor2Windows = [];
+    floor2Items = [];
+    floor2Notes = [];
+    enemies = spawnMapEnemies();
+  }
+
+  leverOn = false;
+  doorUnlocked = false;
+  frame = 0;
+  gameRunning = true;
+  document.getElementById('start-screen').classList.add('hidden');
+  document.getElementById('gameover-screen').classList.add('hidden');
+  showMessage('Jogo carregado.', 2500);
+  return true;
+}
+
 
 function initGame() {
-  player = new Player(1100, 900);
+  currentFloor = 1;
+  player = new Player(1100, 1480); // spawn no BAR
   enemies = spawnMapEnemies();
   items = MAP_ITEMS.map(i => ({ ...i, taken: false }));
   interactables = INTERACTABLES.map(o => ({ ...o }));
@@ -34,6 +199,7 @@ function initGame() {
   doors = DOORS.map(d => ({ ...d }));
   objectSolids = OBJECT_SOLIDS.map(o => ({ ...o }));
   stairs = STAIRS.map(s => ({ ...s }));
+  pushables = (typeof PUSHABLES !== 'undefined' ? PUSHABLES : []).map(p => ({ ...p }));
   leverOn = false;
   doorUnlocked = false;
   unlockedDoors = [];
@@ -42,7 +208,39 @@ function initGame() {
   gameRunning = true;
   document.getElementById('start-screen').classList.add('hidden');
   document.getElementById('gameover-screen').classList.add('hidden');
-  showMessage('Mansão... (C = debug do mapa)', 2800);
+  showMessage('O bar... Algo brilha atrás da caixa.', 3200);
+}
+
+function onEliteDefeated(x, y) {
+  // drop carta
+  items.push({ x: x, y: y - 20, type: 'carta_2andar', taken: false });
+  showSpeech('O manequim caiu. Uma carta caiu no chão...');
+  showMessage('Carta do 2º andar obtida — vá às escadas.', 4000);
+}
+
+function goToFloor2() {
+  currentFloor = 2;
+  enemies = []; // spawns do 2º depois
+  // spawn perto da saída/escada (rosa)
+  player.x = 1129;
+  player.y = 750;
+  floor2Windows = (typeof FLOOR2_WINDOWS !== 'undefined' ? FLOOR2_WINDOWS : []).map(w => ({ ...w }));
+  floor2Items = (typeof FLOOR2_ITEMS !== 'undefined' ? FLOOR2_ITEMS : []).map(i => ({ ...i }));
+  floor2Notes = (typeof FLOOR2_NOTES !== 'undefined' ? FLOOR2_NOTES : []).map(n => ({ ...n }));
+  bossDoorUnlocked = false;
+  showMessage('2º andar. Janelas drenam sanidade se abertas.', 3500);
+  showSpeech('O ar aqui em cima é mais frio...');
+}
+
+function goToFloor1() {
+  currentFloor = 1;
+  enemies = spawnMapEnemies();
+  player.x = 1100;
+  player.y = 560; // perto das escadas
+  floor2Windows = [];
+  floor2Items = [];
+  floor2Notes = [];
+  showMessage('Térreo.', 2000);
 }
 
 function hitsBox(px, py, rad, box) {
@@ -163,10 +361,44 @@ function getNearbyPrompt() {
   const fy = player.y + player.footOffset;
   const reach = 56;
 
+  if (currentFloor === 2) {
+    for (const w of floor2Windows) {
+      if (Math.hypot(fx - w.x, fy - w.y) < 48)
+        return w.open ? 'Aperte E para fechar a janela' : 'Aperte E para abrir a janela';
+    }
+    for (const item of floor2Items) {
+      if (!item.taken && Math.hypot(fx - item.x, fy - item.y) < reach)
+        return 'Aperte E para pegar';
+    }
+    for (const n of floor2Notes) {
+      if (Math.hypot(fx - n.x, fy - n.y) < reach)
+        return 'Aperte E para ler a carta';
+    }
+    if (typeof FLOOR2_BOSS_DOOR !== 'undefined') {
+      const d = FLOOR2_BOSS_DOOR;
+      if (Math.hypot(fx - d.x, fy - d.y) < 60)
+        return bossDoorUnlocked ? 'Porta do sótão aberta' : 'Aperte E (Chave do Sótão)';
+    }
+    if (typeof FLOOR2_EXIT_F1 !== 'undefined') {
+      const e = FLOOR2_EXIT_F1;
+      if (Math.hypot(fx - e.x, fy - e.y) < (e.r || 50))
+        return 'Aperte E para voltar ao 1º andar';
+    }
+    const tt = getTileType(fx, fy);
+    if (tt === 'exit_f1') return 'Aperte E para voltar ao 1º andar';
+    if (tt === 'window') return 'Aperte E — janela';
+    if (tt === 'boss_door') return 'Aperte E — porta do sótão';
+    return null;
+  }
+
+  for (const box of (pushables || [])) {
+    if (!box.pushed && Math.hypot(fx - box.x, fy - box.y) < 48)
+      return 'Aperte E para empurrar a caixa';
+  }
   for (const item of items) {
-    if (item.taken) continue;
+    if (item.taken || item.hidden) continue;
     if (Math.hypot(fx - item.x, fy - item.y) < reach)
-      return 'Aperte E para pegar ' + item.type;
+      return 'Aperte E para pegar';
   }
   for (const n of storyNotes) {
     if (Math.hypot(fx - n.x, fy - n.y) < reach)
@@ -187,7 +419,7 @@ function getNearbyPrompt() {
   }
   for (const s of stairs) {
     const cx = s.x + s.w / 2, cy = s.y + s.h / 2;
-    if (Math.hypot(fx - cx, fy - cy) < 36) return 'Aperte E para examinar as escadas';
+    if (Math.hypot(fx - cx, fy - cy) < 36) return player.hasItem('carta_2andar') ? 'Aperte E para subir ao 2º andar' : 'Escadas — precisa da carta';
   }
   if (typeof getTileType === 'function') {
     const tt = nearbyTileType(fx, fy, 18);
@@ -222,9 +454,83 @@ function interact() {
   if (letterOpen) { closeLetter(); return; }
   const fx = player.x, fy = player.y + player.footOffset;
 
-  // itens
+  // ===== 2º ANDAR =====
+  if (currentFloor === 2) {
+    // janelas
+    for (const w of floor2Windows) {
+      if (Math.hypot(fx - w.x, fy - w.y) < 48) {
+        w.open = !w.open;
+        showSpeech(w.open
+          ? 'Abri a janela. Um vento gelado corta a sanidade...'
+          : 'Fechei a janela. O silêncio volta.');
+        return;
+      }
+    }
+    // itens 2f
+    for (const item of floor2Items) {
+      if (item.taken) continue;
+      if (Math.hypot(fx - item.x, fy - item.y) < 56) {
+        if (player.addItem(item.type)) {
+          item.taken = true;
+          const nome = (KEY_LABELS && KEY_LABELS[item.type]) || item.type;
+          showSpeech('Peguei: ' + nome + '.');
+        } else showSpeech('Inventário cheio.');
+        return;
+      }
+    }
+    // notas 2f
+    for (const n of floor2Notes) {
+      if (Math.hypot(fx - n.x, fy - n.y) < 56) {
+        n.read = true;
+        showLetter(n.text);
+        return;
+      }
+    }
+    // porta boss
+    if (typeof FLOOR2_BOSS_DOOR !== 'undefined') {
+      const d = FLOOR2_BOSS_DOOR;
+      if (Math.hypot(fx - d.x, fy - d.y) < 60) {
+        if (bossDoorUnlocked || isDoorUnlocked(d.x, d.y)) {
+          showSpeech('A porta do sótão está aberta... (boss em breve)');
+        } else if (player.hasItem('chave_boss')) {
+          unlockDoorAt(d.x, d.y, 'boss');
+          bossDoorUnlocked = true;
+          const idx = player.inventory.indexOf('chave_boss');
+          if (idx >= 0) player.inventory[idx] = null;
+          showSpeech('A Chave do Sótão girou. A porta cedeu.');
+        } else {
+          showSpeech('Porta selada. Preciso da Chave do Sótão.');
+        }
+        return;
+      }
+    }
+    // saída pro 1º
+    if (typeof FLOOR2_EXIT_F1 !== 'undefined') {
+      const e = FLOOR2_EXIT_F1;
+      if (Math.hypot(fx - e.x, fy - e.y) < (e.r || 50)) {
+        goToFloor1();
+        return;
+      }
+    }
+    // cores
+    const tt = getTileType(fx, fy);
+    if (tt === 'exit_f1') { goToFloor1(); return; }
+    if (tt === 'window') {
+      showSpeech('Uma janela. Aperte E perto dela para abrir/fechar.');
+      return;
+    }
+    if (tt === 'boss_door') {
+      showSpeech(bossDoorUnlocked ? 'Porta do sótão aberta.' : 'Porta do sótão. Trancada.');
+      return;
+    }
+    if (tt === 'interact') { showSpeech('Nada de especial...'); return; }
+    return;
+  }
+
+  // ===== 1º ANDAR =====
+  // itens (hidden só após puzzle)
   for (const item of items) {
-    if (item.taken) continue;
+    if (item.taken || item.hidden) continue;
     if (Math.hypot(fx - item.x, fy - item.y) < 56) {
       if (player.addItem(item.type)) {
         item.taken = true;
@@ -244,14 +550,36 @@ function interact() {
     }
   }
 
+  // caixa empurrável (puzzle do bar)
+  for (const box of pushables) {
+    if (box.pushed) continue;
+    if (Math.hypot(fx - box.x, fy - box.y) < 48) {
+      // empurra para a esquerda
+      box.x -= 50;
+      box.pushed = true;
+      if (box.revealItemId) {
+        for (const it of items) {
+          if (it.id === box.revealItemId) it.hidden = false;
+        }
+      }
+      showSpeech('Empurrei a caixa. Uma chave estava escondida atrás!');
+      showMessage('Chave da Mansão revelada!', 2500);
+      return;
+    }
+  }
+
   // interações posicionadas
   for (const obj of interactables) {
     if (Math.hypot(fx - obj.x, fy - obj.y) > (obj.r || 48)) continue;
 
     if (obj.type === 'fogueira') {
       player.heal(100);
-      enemies = spawnMapEnemies();
-      showSpeech('O calor da fogueira acalma a mente. Sanidade restaurada.');
+      // não respawna inimigos — só cura + save
+      const ok = saveGame();
+      showSpeech(ok
+        ? 'O calor da fogueira acalma a mente. Progresso salvo.'
+        : 'O calor da fogueira acalma a mente. Sanidade restaurada.');
+      showMessage(ok ? 'Jogo salvo na fogueira.' : 'Sanidade restaurada.', 2500);
       return;
     }
     if (obj.type === 'flavor') {
@@ -308,21 +636,32 @@ function interact() {
     return;
   }
 
+  // escadas (caixa)
+  if (currentFloor === 1) {
+    for (const s of stairs) {
+      const cx = s.x + s.w / 2, cy = s.y + s.h / 2;
+      if (Math.hypot(fx - cx, fy - cy) < 50) {
+        if (player.hasItem('carta_2andar')) goToFloor2();
+        else showSpeech('Escadas... preciso da carta do manequim.');
+        return;
+      }
+    }
+  } else {
+    // no 2º andar: E perto do centro volta
+    if (Math.hypot(fx - MAP2_W/2, fy - MAP2_H/2) < 80) {
+      // optional: nothing
+    }
+  }
+
   // cores sob o pé
-  if (typeof getTileType === 'function') {
+  if (typeof getTileType === 'function' && currentFloor === 1) {
     const tt = nearbyTileType(fx, fy, 20);
     if (tt === 'note') {
       showLetter('O papel está quase ilegível...');
       return;
     }
-    if (tt === 'interact' || tt === 'fogueira') {
-      // fallback se não bateu na lista
-      if (tt === 'fogueira') {
-        player.heal(100);
-        showSpeech('O calor da fogueira acalma a mente.');
-      } else {
-        showSpeech('Nada de especial...');
-      }
+    if (tt === 'interact') {
+      showSpeech('Nada de especial...');
       return;
     }
     if (tt === 'door') {
@@ -342,7 +681,11 @@ function interact() {
       return;
     }
     if (tt === 'stairs') {
-      showSpeech('Escadas para o segundo andar... ainda fechadas.');
+      if (player.hasItem('carta_2andar')) {
+      goToFloor2();
+    } else {
+      showSpeech('Escadas para o segundo andar... preciso de uma carta especial.');
+    }
       return;
     }
     if (tt === 'item') {
@@ -382,9 +725,8 @@ function update() {
   if (keys['s'] || keys['arrowdown']) dy = 1;
   if (keys['a'] || keys['arrowleft']) dx = -1;
   if (keys['d'] || keys['arrowright']) dx = 1;
-  const running = !!(keys['shift']);
-  if (!player.attacking) {
-    player.applyMove(dx, dy, running);
+  if (!player.attacking && !letterOpen) {
+    player.applyMove(dx, dy);
   }
 
   for (const e of enemies) e.update(player);
@@ -392,6 +734,12 @@ function update() {
   for (const obj of interactables) {
     if (obj.type === 'janela' && obj.open && frame % 45 === 0)
       player.sanity = Math.max(0, player.sanity - 2);
+  }
+  if (currentFloor === 2) {
+    for (const w of floor2Windows) {
+      if (w.open && frame % 40 === 0)
+        player.sanity = Math.max(0, player.sanity - 3);
+    }
   }
   if (player.sanity <= 0) {
     gameRunning = false;
@@ -415,7 +763,11 @@ function draw() {
     ctx.save();
     ctx.translate(ox, oy);
     ctx.scale(scale, scale);
-    if (mapImg.complete && mapImg.naturalWidth > 0) ctx.drawImage(mapImg, 0, 0, MAP_W, MAP_H);
+    if (currentFloor === 2 && mapImg2 && mapImg2.complete) {
+    ctx.drawImage(mapImg2, 0, 0, MAP2_W, MAP2_H);
+  } else if (mapImg.complete && mapImg.naturalWidth > 0) {
+    ctx.drawImage(mapImg, 0, 0, MAP_W, MAP_H);
+  }
 
     // mostra o MAPA DE COLISÃO por cores (semi-transparente em cima do visual)
     if (collReady && collCanvas) {
@@ -465,8 +817,10 @@ function draw() {
   const viewH = canvas.height / ZOOM;
   let camX = player.x - viewW / 2;
   let camY = player.y - viewH / 2;
-  camX = Math.max(0, Math.min(MAP_W - viewW, camX));
-  camY = Math.max(0, Math.min(MAP_H - viewH, camY));
+  const worldW = currentFloor === 2 ? MAP2_W : MAP_W;
+  const worldH = currentFloor === 2 ? MAP2_H : MAP_H;
+  camX = Math.max(0, Math.min(worldW - viewW, camX));
+  camY = Math.max(0, Math.min(worldH - viewH, camY));
   const screenPX = (player.x - camX) * ZOOM;
   const screenPY = (player.y - camY) * ZOOM;
   const radius = player.vision * ZOOM;
@@ -480,11 +834,73 @@ function draw() {
   ctx.save();
   ctx.scale(ZOOM, ZOOM);
   ctx.translate(-camX, -camY);
-  if (mapImg.complete && mapImg.naturalWidth > 0) ctx.drawImage(mapImg, 0, 0, MAP_W, MAP_H);
+  if (currentFloor === 2 && mapImg2 && mapImg2.complete) {
+    ctx.drawImage(mapImg2, 0, 0, MAP2_W, MAP2_H);
+  } else if (mapImg.complete && mapImg.naturalWidth > 0) {
+    ctx.drawImage(mapImg, 0, 0, MAP_W, MAP_H);
+  }
 
-  for (const item of items) {
-    if (item.taken) continue;
+  // 2º andar: janelas + itens
+  if (currentFloor === 2) {
+    for (const w of floor2Windows) {
+      const img = w.open ? windowOpenImg : windowClosedImg;
+      if (img && img.complete && img.naturalWidth > 0) {
+        const s = 0.9;
+        const iw = img.naturalWidth * s, ih = img.naturalHeight * s;
+        ctx.drawImage(img, w.x - iw/2, w.y - ih/2, iw, ih);
+      } else {
+        ctx.fillStyle = w.open ? '#4af' : '#224';
+        ctx.fillRect(w.x - 16, w.y - 16, 32, 32);
+      }
+      if (w.open) {
+        ctx.strokeStyle = 'rgba(100,200,255,0.4)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(w.x - 18, w.y - 18, 36, 36);
+      }
+    }
+    for (const item of floor2Items) {
+      if (item.taken) continue;
+      const pulse = 1 + Math.sin(frame * 0.12) * 0.1;
+      ctx.beginPath();
+      ctx.arc(item.x, item.y, 8 * pulse, 0, Math.PI * 2);
+      ctx.fillStyle = '#40e060';
+      ctx.fill();
+    }
+    for (const n of floor2Notes) {
+      if (cartaImg && cartaImg.complete) {
+        const s = n.read ? 0.6 : 0.8;
+        ctx.globalAlpha = n.read ? 0.5 : 1;
+        ctx.drawImage(cartaImg, n.x - 14*s, n.y - 14*s, 28*s, 28*s);
+        ctx.globalAlpha = 1;
+      }
+    }
+  }
+
+  // caixas empurráveis (só térreo)
+  if (currentFloor === 1) for (const box of (pushables || [])) {
+    ctx.fillStyle = '#8B6914';
+    ctx.fillRect(box.x - 18, box.y - 18, 36, 36);
+    ctx.strokeStyle = '#5a4010';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(box.x - 18, box.y - 18, 36, 36);
+    if (!box.pushed) {
+      ctx.fillStyle = '#fff';
+      ctx.font = '10px sans-serif';
+      ctx.fillText('E', box.x - 4, box.y + 4);
+    }
+  }
+
+  if (currentFloor === 1) for (const item of items) {
+    if (item.taken || item.hidden) continue;
     const pulse = 1 + Math.sin(frame * 0.12) * 0.1;
+    // carta usa sprite pixel
+    if ((item.type === 'carta_2andar' || (item.type || '').startsWith('carta')) && cartaImg && cartaImg.complete) {
+      const bob = Math.sin(frame * 0.1) * 2;
+      const s = 0.85 + pulse * 0.08;
+      const w = 32 * s, h = 32 * s;
+      ctx.drawImage(cartaImg, item.x - w/2, item.y - h/2 + bob, w, h);
+      continue;
+    }
     ctx.beginPath();
     ctx.arc(item.x, item.y, 10, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(0,255,80,0.25)';
@@ -497,13 +913,22 @@ function draw() {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#0a1a08';
-    const icons = { cafe: '☕', faca: '🔪', lanterna: '🔦', chave: '🔑', chave_esq: '🔑', chave_dir: '🔑', chave_dir2: '🔑', chave_beco: '🔑' };
+    const icons = { cafe: '☕', faca: '🔪', lanterna: '🔦', chave: '🔑', chave_esq: '🔑', chave_dir: '🔑', chave_dir2: '🔑', chave_beco: '🔑', carta_2andar: '📜' };
     ctx.fillText(icons[item.type] || '?', item.x, item.y + 1);
   }
 
-  for (const n of storyNotes) {
-    ctx.fillStyle = n.read ? '#8060a0' : '#ff40c0';
-    ctx.fillRect(n.x - 7, n.y - 5, 14, 10);
+  if (currentFloor === 1) for (const n of storyNotes) {
+    if (cartaImg && cartaImg.complete && cartaImg.naturalWidth > 0) {
+      const s = n.read ? 0.65 : 0.85;
+      const bob = Math.sin(frame * 0.08 + n.x * 0.01) * 2;
+      const w = 28 * s, h = 28 * s;
+      ctx.globalAlpha = n.read ? 0.5 : 1;
+      ctx.drawImage(cartaImg, n.x - w/2, n.y - h/2 + bob, w, h);
+      ctx.globalAlpha = 1;
+    } else {
+      ctx.fillStyle = n.read ? '#8060a0' : '#ff40c0';
+      ctx.fillRect(n.x - 7, n.y - 5, 14, 10);
+    }
   }
 
   for (const obj of interactables) {
@@ -552,6 +977,25 @@ function loop() {
   draw();
   requestAnimationFrame(loop);
 }
-document.getElementById('btn-start').addEventListener('click', initGame);
-document.getElementById('btn-restart').addEventListener('click', initGame);
+document.getElementById('btn-start').addEventListener('click', () => {
+  try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+  initGame();
+});
+document.getElementById('btn-restart').addEventListener('click', () => {
+  try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+  initGame();
+});
+const btnCont = document.getElementById('btn-continue');
+if (btnCont) {
+  if (hasSave()) btnCont.classList.remove('hidden');
+  else btnCont.classList.add('hidden');
+  btnCont.addEventListener('click', () => {
+    if (!loadGame()) initGame();
+  });
+}
+// atualiza botão continuar ao voltar pro menu
+window.addEventListener('focus', () => {
+  const b = document.getElementById('btn-continue');
+  if (b) b.classList.toggle('hidden', !hasSave());
+});
 loop();

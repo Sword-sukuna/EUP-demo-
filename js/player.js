@@ -7,7 +7,6 @@ class Player {
     this.radius = 10;
     this.footOffset = 28; // pés mais embaixo no sprite
     this.speed = 3.2;
-    this.runSpeed = 5.0;
     this.sanity = 100;
     this.maxSanity = 100;
 
@@ -144,9 +143,9 @@ class Player {
   }
 
   // chamado pelo main com dx,dy e se está correndo (Shift)
-  applyMove(dx, dy, running) {
+  applyMove(dx, dy) {
     this.moving = !!(dx || dy);
-    this.running = !!(running && this.moving);
+    this.running = false;
 
     if (!this.moving) {
       this.anim = 0;
@@ -156,18 +155,20 @@ class Player {
     if (Math.abs(dx) > Math.abs(dy)) this.facing = dx > 0 ? 'right' : 'left';
     else this.facing = dy > 0 ? 'down' : 'up';
 
-    const spd = this.running ? this.runSpeed : this.speed;
+    const spd = this.speed;
     const len = Math.hypot(dx, dy) || 1;
     const mx = (dx / len) * spd;
     const my = (dy / len) * spd;
 
-    this.anim += this.running ? 0.28 : 0.18;
+    this.anim += 0.18;
 
     if (!this.solidAt(this.x + mx, this.y)) this.x += mx;
     if (!this.solidAt(this.x, this.y + my)) this.y += my;
 
-    this.x = Math.max(16, Math.min(MAP_W - 16, this.x));
-    this.y = Math.max(16, Math.min(MAP_H - 16, this.y));
+    const maxW = (typeof currentFloor !== 'undefined' && currentFloor === 2) ? MAP2_W : MAP_W;
+    const maxH = (typeof currentFloor !== 'undefined' && currentFloor === 2) ? MAP2_H : MAP_H;
+    this.x = Math.max(16, Math.min(maxW - 16, this.x));
+    this.y = Math.max(16, Math.min(maxH - 16, this.y));
   }
 
   _currentFrame() {

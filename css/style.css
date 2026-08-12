@@ -333,3 +333,61 @@ html, body {
   text-align: center;
   letter-spacing: 1px;
 }
+
+
+/* telas com arte */
+#start-screen {
+  background: #0a0806 url('../assets/ui/title_screen.jpg') center/cover no-repeat;
+}
+#start-screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  pointer-events: none;
+}
+#start-screen > * {
+  position: relative;
+  z-index: 1;
+}
+#start-screen h1 {
+  text-shadow: 0 2px 12px #000, 0 0 30px rgba(180,40,20,0.5);
+  letter-spacing: 4px;
+}
+#start-screen .title-block { margin-bottom: 8px; }
+#start-screen .story, #start-screen .hint {
+  background: rgba(0,0,0,0.55);
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(140,100,60,0.35);
+}
+
+#gameover-screen {
+  background: #0a0806 url('../assets/ui/death_screen.jpg') center/cover no-repeat;
+}
+#gameover-screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  pointer-events: none;
+}
+#gameover-screen > * {
+  position: relative;
+  z-index: 1;
+}
+#gameover-screen h1 {
+  color: #e04040;
+  text-shadow: 0 2px 16px #000;
+}
+
+#btn-continue {
+  margin-bottom: 12px;
+  border-color: #6a5a30;
+  color: #d0c090;
+}
+#btn-continue:hover {
+  background: #6a5a30;
+  color: #fff;
+}
+#start-screen button { display: block; margin-left: auto; margin-right: auto; }

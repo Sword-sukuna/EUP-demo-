@@ -20,7 +20,7 @@
         <div class="slot" data-slot="2"></div>
         <div class="slot" data-slot="3"></div>
       </div>
-      <div id="hint-bar">WASD mover · Shift correr · E interagir · F lanterna · 1-4 item · Espaço atacar</div>
+      <div id="hint-bar">WASD mover · E interagir · F lanterna · 1-4 item · Espaço atacar · Fogueira salva</div>
     </div>
 
     <canvas id="gameCanvas" width="1280" height="720"></canvas>
@@ -38,16 +38,16 @@
 
     <div id="start-screen">
       <div class="title-block">
-        <h1>ECOS DA ÚLTIMA PORTA</h1>
-        <p class="subtitle">DEMO</p>
+        <p class="subtitle">DEMO · ALPHA</p>
       </div>
-      <p class="story">Os medos da sua esposa morta ainda habitam esta mansão.<br>Não deixe a sanidade chegar a zero.</p>
-      <p class="hint">WASD / Setas — mover<br>Shift — correr<br>E — usar / interagir<br>F — lanterna<br>1-4 — inventário<br>Espaço — atacar</p>
-      <button id="btn-start">ENTRAR NA MANSÃO</button>
+      <p class="story">Os medos da sua esposa morta ainda habitam esta mansão.<br>Não deixe a sanidade chegar a zero.<br><span style="opacity:.75">Descanse na fogueira para salvar.</span></p>
+      <p class="hint">WASD — mover · E — interagir · F — lanterna<br>1-4 — item · Espaço — atacar</p>
+      <button id="btn-continue" class="hidden">CONTINUAR</button>
+      <button id="btn-start">NOVO JOGO</button>
     </div>
 
     <div id="gameover-screen" class="hidden">
-      <h1>VOCÊ PERDEU A SANIDADE</h1>
+      <h1>SANIDADE ESGOTADA</h1>
       <p>Os medos a consumiram por completo...</p>
       <button id="btn-restart">TENTAR NOVAMENTE</button>
     </div>

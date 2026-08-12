@@ -16,20 +16,36 @@ function updateHUD(player, roomName) {
   document.getElementById('room-name').textContent = roomName;
 
   const slots = document.querySelectorAll('.slot');
-  const icons = { cafe: '☕', faca: '🔪', lanterna: '🔦', chave: '🔑', chave_esq: '🔑', chave_dir: '🔑', chave_dir2: '🔑', chave_beco: '🔑' };
+  const icons = {
+    cafe: '☕', faca: '🔪', lanterna: '🔦', chave: '🔑',
+    chave_esq: '🔑', chave_dir: '🔑', chave_dir2: '🔑', chave_beco: '🔑',
+    carta_2andar: '📜'
+  };
 
   slots.forEach((slot, i) => {
     const item = player.inventory[i];
-    slot.textContent = item ? (icons[item] || '?') : '';
     slot.classList.toggle('selected', i === player.selectedSlot);
-    const old = slot.querySelector('.item-name');
-    if (old) old.remove();
-    if (item) {
-      const name = document.createElement('div');
-      name.className = 'item-name';
-      name.textContent = item;
-      slot.appendChild(name);
+    slot.innerHTML = '';
+    if (!item) {
+      slot.title = '';
+      return;
     }
+    slot.title = (typeof KEY_LABELS !== 'undefined' && KEY_LABELS[item]) ? KEY_LABELS[item] : item;
+    if (item === 'carta_2andar' || (item + '').startsWith('carta')) {
+      const img = document.createElement('img');
+      img.src = 'assets/sprites/carta/carta_icon.png';
+      img.alt = 'carta';
+      img.style.width = '28px';
+      img.style.height = '28px';
+      img.style.imageRendering = 'pixelated';
+      slot.appendChild(img);
+    } else {
+      slot.textContent = icons[item] || '?';
+    }
+    const name = document.createElement('div');
+    name.className = 'item-name';
+    name.textContent = slot.title;
+    slot.appendChild(name);
   });
 }
 
