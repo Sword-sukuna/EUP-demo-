@@ -34,13 +34,17 @@ const MAP_ITEMS = [
 // fix: separate faca
 MAP_ITEMS.length = 0;
 MAP_ITEMS.push(
+  // --- área aberta do hall (acessível desde o início) ---
+  { x: 1000, y: 850, type: 'chave_esq',  taken: false },
+  { x: 1200, y: 850, type: 'chave_dir',  taken: false },
+  { x: 1100, y: 1000, type: 'chave_dir2', taken: false },
+  { x: 1050, y: 780, type: 'chave_beco', taken: false },
+  { x: 1150, y: 780, type: 'lanterna',   taken: false },
+  { x: 980,  y: 950, type: 'cafe',       taken: false },
+  { x: 1220, y: 950, type: 'faca',       taken: false },
+  // extras nos quartos (se o jogador explorar)
   { x: 253,  y: 224, type: 'cafe',       taken: false },
-  { x: 1779, y: 179, type: 'lanterna',   taken: false },
-  { x: 187,  y: 563, type: 'chave_esq',  taken: false },
-  { x: 1858, y: 609, type: 'chave_dir',  taken: false },
-  { x: 411,  y: 944, type: 'chave_beco', taken: false },
-  { x: 1996, y: 917, type: 'chave_dir2', taken: false },
-  { x: 1800, y: 600, type: 'faca',       taken: false }
+  { x: 1779, y: 179, type: 'lanterna',   taken: false }
 );
 
 // Interações BRANCAS — fala específica por posição
