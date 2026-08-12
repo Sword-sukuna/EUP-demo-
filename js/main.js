@@ -23,6 +23,13 @@ collImg.onload = () => initCollisionMap(collImg);
 const collImg2 = new Image();
 collImg2.src = 'assets/collision-map-2.png';
 collImg2.onload = () => initCollisionMap2(collImg2);
+const lightImg = new Image();
+lightImg.src = 'assets/light-map.png';
+lightImg.onload = () => initLightMap(lightImg);
+const lightImg2 = new Image();
+lightImg2.src = 'assets/light-map-2.png';
+lightImg2.onload = () => initLightMap2(lightImg2);
+
 
 const ZOOM = 1.8;
 
@@ -1038,8 +1045,8 @@ function draw() {
     for (let d = step; d <= dist; d += step) {
       const wx = px + cos * d;
       const wy = py + sin * d;
-      if (typeof isSolid === 'function' && isSolid(wx, wy)) {
-        hit = d;
+      if (typeof isLightBlocked === 'function' && isLightBlocked(wx, wy)) {
+        hit = Math.max(step, d - step * 0.5); // para um pouco antes da parede
         break;
       }
     }

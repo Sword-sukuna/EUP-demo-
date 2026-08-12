@@ -113,3 +113,45 @@ function isSolid(wx, wy) {
 function getTileType(wx, wy) {
   return sampleColor(wx, wy);
 }
+
+
+// ========== MAPA DE LUZ (oclusão de visão) ==========
+let lightCanvas = null, lightCtx = null, lightReady = false;
+let lightCanvas2 = null, lightCtx2 = null, light2Ready = false;
+
+function initLightMap(img) {
+  lightCanvas = document.createElement('canvas');
+  lightCanvas.width = MAP_W;
+  lightCanvas.height = MAP_H;
+  lightCtx = lightCanvas.getContext('2d', { willReadFrequently: true });
+  lightCtx.drawImage(img, 0, 0, MAP_W, MAP_H);
+  lightReady = true;
+}
+
+function initLightMap2(img) {
+  lightCanvas2 = document.createElement('canvas');
+  lightCanvas2.width = MAP2_W;
+  lightCanvas2.height = MAP2_H;
+  lightCtx2 = lightCanvas2.getContext('2d', { willReadFrequently: true });
+  lightCtx2.drawImage(img, 0, 0, MAP2_W, MAP2_H);
+  light2Ready = true;
+}
+
+/** true = luz NÃO passa (parede no mapa de iluminação) */
+function isLightBlocked(wx, wy) {
+  let ctx, ready, maxW, maxH;
+  if (typeof currentFloor !== 'undefined' && currentFloor === 2) {
+    ctx = lightCtx2; ready = light2Ready; maxW = MAP2_W; maxH = MAP2_H;
+  } else {
+    ctx = lightCtx; ready = lightReady; maxW = MAP_W; maxH = MAP_H;
+  }
+  if (!ready || !ctx) {
+    // fallback: usa colisão sólida
+    return typeof isSolid === 'function' ? isSolid(wx, wy) : false;
+  }
+  const x = Math.max(0, Math.min(maxW - 1, Math.floor(wx)));
+  const y = Math.max(0, Math.min(maxH - 1, Math.floor(wy)));
+  const p = ctx.getImageData(x, y, 1, 1).data;
+  // vermelho no light-map = bloqueia
+  return p[0] > 128;
+}

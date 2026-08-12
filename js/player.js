@@ -15,8 +15,8 @@ class Player {
 
     this.hasLantern = false;
     this.lanternOn = false;
-    this.lightRadius = 95;
-    this.lanternRadius = 170;
+    this.lightRadius = 120;
+    this.lanternRadius = 200;
 
     this.attackCooldown = 0;
     this.attackRange = 48;
