@@ -19,13 +19,11 @@ let gameRunning = false;
 let frame = 0;
 let leverOn = false;
 let doorUnlocked = false;
-  if (typeof unlockedDoors !== "undefined") unlockedDoors = []; // beco
 let chestOpened = false;
 let debugCollision = false;
 let speechTimer = null;
 let letterOpen = false;
 let typewriterTimer = null;
-
 
 function initGame() {
   player = new Player(1100, 900);
@@ -38,10 +36,8 @@ function initGame() {
   stairs = STAIRS.map(s => ({ ...s }));
   leverOn = false;
   doorUnlocked = false;
+  unlockedDoors = [];
   chestOpened = false;
-  // sync beco door
-  const beco = doors.find(d => d.id === 'beco');
-  if (beco) beco.locked = true;
   frame = 0;
   gameRunning = true;
   document.getElementById('start-screen').classList.add('hidden');
@@ -56,14 +52,10 @@ function hitsBox(px, py, rad, box) {
 }
 
 function hitsDynamic(px, py, rad) {
-  for (const o of objectSolids) {
-    if (hitsBox(px, py, rad, o)) return true;
-  }
-  for (const d of doors) {
-    if (d.locked && hitsBox(px, py, rad, d)) return true;
-  }
+  // colisão principal vem do collision-map.png (cores)
+  // só bloqueia escadas por caixa (roxo futuro)
   for (const s of stairs) {
-    if (s.locked && hitsBox(px, py, rad, s)) return true;
+    if (s.locked && hitsBox(px, py, rad * 0.5, s)) return true;
   }
   return false;
 }
@@ -204,8 +196,12 @@ function getNearbyPrompt() {
     if (tt === 'item') return 'Aperte E para pegar';
     if (tt === 'scene') return 'Aperte E para examinar a saída';
     if (tt === 'door') {
-      return isDoorUnlocked(fx, fy) ? 'Porta aberta' : 'Aperte E para usar a chave';
+      return isDoorUnlocked(fx, fy) ? 'Porta aberta' : 'Aperte E (chave específica)';
     }
+    if (tt === 'door_free') return 'Passagem livre';
+    if (tt === 'exit_street') return 'Aperte E — saída para a rua';
+    if (tt === 'exit_patio') return 'Aperte E — saída para o pátio';
+    if (tt === 'fogueira') return 'Aperte E — fogueira';
   }
   return null;
 }
@@ -226,19 +222,20 @@ function interact() {
   if (letterOpen) { closeLetter(); return; }
   const fx = player.x, fy = player.y + player.footOffset;
 
-  // itens verdes
+  // itens
   for (const item of items) {
     if (item.taken) continue;
     if (Math.hypot(fx - item.x, fy - item.y) < 56) {
       if (player.addItem(item.type)) {
         item.taken = true;
-        showSpeech('Peguei: ' + item.type + '.');
+        const nome = (typeof KEY_LABELS !== 'undefined' && KEY_LABELS[item.type]) ? KEY_LABELS[item.type] : item.type;
+        showSpeech('Peguei: ' + nome + '.');
       } else showSpeech('Inventário cheio.');
       return;
     }
   }
 
-  // cartas magenta → papel
+  // cartas
   for (const n of storyNotes) {
     if (Math.hypot(fx - n.x, fy - n.y) < 56) {
       n.read = true;
@@ -247,117 +244,116 @@ function interact() {
     }
   }
 
-  // objetos brancos (fogueira, alavanca, baú, janela)
+  // interações posicionadas
   for (const obj of interactables) {
     if (Math.hypot(fx - obj.x, fy - obj.y) > (obj.r || 48)) continue;
+
     if (obj.type === 'fogueira') {
       player.heal(100);
       enemies = spawnMapEnemies();
       showSpeech('O calor da fogueira acalma a mente. Sanidade restaurada.');
       return;
     }
+    if (obj.type === 'flavor') {
+      showSpeech(obj.text || '...');
+      return;
+    }
     if (obj.type === 'janela') {
       obj.open = !obj.open;
-      showSpeech(obj.open
-        ? 'Abri a janela. Um vento gelado corta a pele...'
-        : 'Fechei a janela. O silêncio volta.');
+      showSpeech(obj.open ? 'Abri a janela. Um vento gelado corta a pele...' : 'Fechei a janela.');
       if (obj.open) player.takeDamage(10);
       return;
     }
     if (obj.type === 'bau') {
       if (chestOpened) { showSpeech('O baú já está aberto.'); return; }
-      if (player.hasItem('chave')) {
+      if (player.hasItem('chave_beco') || player.hasItem('chave_esq')) {
         chestOpened = true;
-        const idx = player.inventory.indexOf('chave');
-        if (idx >= 0) player.inventory[idx] = null;
+        // gasta uma chave genérica se tiver
+        for (const k of ['chave_beco','chave_esq','chave_dir']) {
+          const idx = player.inventory.indexOf(k);
+          if (idx >= 0) { player.inventory[idx] = null; break; }
+        }
         player.addItem('cafe');
-        showSpeech('A chave girou. Achei um café dentro.');
-      } else showSpeech('Trancado. Preciso de uma chave.');
+        showSpeech('O baú abriu. Achei um café.');
+      } else showSpeech('Trancado.');
       return;
     }
     if (obj.type === 'alavanca') {
       obj.on = !obj.on;
       leverOn = obj.on;
-      doorUnlocked = leverOn;
-      const beco = doors.find(d => d.id === 'beco');
-      if (beco) beco.locked = !leverOn;
-      showSpeech(leverOn
-        ? 'A alavanca cedeu. Ouvi algo destrancar no beco.'
-        : 'Alavanca desligada.');
+      showSpeech(leverOn ? 'A alavanca cedeu com um estalo.' : 'Alavanca desligada.');
       return;
     }
   }
 
-  // portas AZUIS (mapa de cor) — precisam de CHAVE
-  if (typeof getTileType === 'function' && nearbyTileType(fx, fy, 22) === 'door') {
-    if (isDoorUnlocked(fx, fy)) {
-      showSpeech('A porta já está aberta.');
+  // portas AZUIS — chave específica
+  for (const d of doors) {
+    const cx = d.x + d.w / 2, cy = d.y + d.h / 2;
+    if (Math.hypot(fx - cx, fy - cy) > 70) continue;
+    if (!d.locked || isDoorUnlocked(cx, cy)) {
+      showSpeech('A porta está aberta.');
       return;
     }
-    if (player.hasItem('chave')) {
-      unlockDoorAt(fx, fy);
-      const idx = player.inventory.indexOf('chave');
+    const need = d.key;
+    if (player.hasItem(need)) {
+      unlockDoorAt(cx, cy, d.id);
+      d.locked = false;
+      const idx = player.inventory.indexOf(need);
       if (idx >= 0) player.inventory[idx] = null;
-      showSpeech('Usei a chave. A porta destrancou.');
+      const nome = (KEY_LABELS && KEY_LABELS[need]) || need;
+      showSpeech('Usei a ' + nome + '. A porta destrancou.');
     } else {
-      showSpeech('Trancada. Preciso de uma chave.');
+      showSpeech('Trancada. Preciso da chave certa.');
     }
     return;
   }
-  // portas da lista (fallback)
-  for (const d of doors) {
-    if (Math.hypot(fx - (d.x + d.w / 2), fy - (d.y + d.h / 2)) < 55) {
-      if (d.locked && !isDoorUnlocked(d.x + d.w/2, d.y + d.h/2)) {
-        if (player.hasItem('chave')) {
-          unlockDoorAt(d.x + d.w/2, d.y + d.h/2);
-          d.locked = false;
-          const idx = player.inventory.indexOf('chave');
-          if (idx >= 0) player.inventory[idx] = null;
-          showSpeech('Usei a chave. A porta destrancou.');
-        } else showSpeech('Trancada. Preciso de uma chave.');
-      } else showSpeech('A porta está livre.');
-      return;
-    }
-  }
 
-  // escadas
-  for (const s of stairs) {
-    const cx = s.x + s.w / 2, cy = s.y + s.h / 2;
-    if (Math.hypot(fx - cx, fy - cy) < 36) {
-      showSpeech('Escadas para o segundo andar... ainda não.');
-      return;
-    }
-  }
-
-  // cores do mapa sob o pé
+  // cores sob o pé
   if (typeof getTileType === 'function') {
-    const tt = nearbyTileType(fx, fy, 18);
+    const tt = nearbyTileType(fx, fy, 20);
     if (tt === 'note') {
-      showLetter('O papel está ilegível, só resta o medo manchado na tinta.');
+      showLetter('O papel está quase ilegível...');
       return;
     }
-    if (tt === 'interact') {
-      showSpeech(randomFlavor());
-      return;
-    }
-    if (tt === 'item') {
-      showSpeech('Tem algo aqui... mas já peguei o que havia?');
-      return;
-    }
-    if (tt === 'scene') {
-      showSpeech('Uma saída para outro lugar. Ainda não é a hora.');
+    if (tt === 'interact' || tt === 'fogueira') {
+      // fallback se não bateu na lista
+      if (tt === 'fogueira') {
+        player.heal(100);
+        showSpeech('O calor da fogueira acalma a mente.');
+      } else {
+        showSpeech('Nada de especial...');
+      }
       return;
     }
     if (tt === 'door') {
-      showSpeech('Uma porta.');
+      showSpeech('Porta trancada. Preciso da chave certa.');
+      return;
+    }
+    if (tt === 'door_free') {
+      showSpeech('A passagem está livre.');
+      return;
+    }
+    if (tt === 'exit_street') {
+      showSpeech('A saída para a rua. Ainda não é a hora de ir.');
+      return;
+    }
+    if (tt === 'exit_patio') {
+      showSpeech('A porta do pátio. O ar lá fora é pesado.');
+      return;
+    }
+    if (tt === 'stairs') {
+      showSpeech('Escadas para o segundo andar... ainda fechadas.');
+      return;
+    }
+    if (tt === 'item') {
+      showSpeech('Tem algo aqui.');
       return;
     }
   }
 }
 
 function attack() {
-  if (player.attackCooldown > 0) return;
-  player.attackCooldown = player.hasItem('faca') ? 14 : 22;
+  if (!player.startAttack()) return;
   let hit = false;
   for (const e of enemies) {
     if (!e.alive) continue;
@@ -386,20 +382,9 @@ function update() {
   if (keys['s'] || keys['arrowdown']) dy = 1;
   if (keys['a'] || keys['arrowleft']) dx = -1;
   if (keys['d'] || keys['arrowright']) dx = 1;
-
-  if (dx || dy) {
-    const len = Math.hypot(dx, dy) || 1;
-    const mx = (dx / len) * player.speed;
-    const my = (dy / len) * player.speed;
-    player.anim += 0.25;
-    if (Math.abs(dx) > Math.abs(dy)) player.facing = dx > 0 ? 'right' : 'left';
-    else player.facing = dy > 0 ? 'down' : 'up';
-    const tx = player.x + mx, ty = player.y + my;
-    const foot = player.footOffset;
-    if (!player.solidAt(tx, player.y) && !hitsDynamic(tx, player.y + foot, player.radius)) player.x = tx;
-    if (!player.solidAt(player.x, ty) && !hitsDynamic(player.x, ty + foot, player.radius)) player.y = ty;
-    player.x = Math.max(16, Math.min(MAP_W - 16, player.x));
-    player.y = Math.max(16, Math.min(MAP_H - 16, player.y));
+  const running = !!(keys['shift']);
+  if (!player.attacking) {
+    player.applyMove(dx, dy, running);
   }
 
   for (const e of enemies) e.update(player);
@@ -512,7 +497,7 @@ function draw() {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#0a1a08';
-    const icons = { cafe: '☕', faca: '🔪', lanterna: '🔦', chave: '🔑' };
+    const icons = { cafe: '☕', faca: '🔪', lanterna: '🔦', chave: '🔑', chave_esq: '🔑', chave_dir: '🔑', chave_dir2: '🔑', chave_beco: '🔑' };
     ctx.fillText(icons[item.type] || '?', item.x, item.y + 1);
   }
 

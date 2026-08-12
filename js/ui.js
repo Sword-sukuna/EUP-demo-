@@ -16,7 +16,7 @@ function updateHUD(player, roomName) {
   document.getElementById('room-name').textContent = roomName;
 
   const slots = document.querySelectorAll('.slot');
-  const icons = { cafe: '☕', faca: '🔪', lanterna: '🔦', chave: '🔑' };
+  const icons = { cafe: '☕', faca: '🔪', lanterna: '🔦', chave: '🔑', chave_esq: '🔑', chave_dir: '🔑', chave_dir2: '🔑', chave_beco: '🔑' };
 
   slots.forEach((slot, i) => {
     const item = player.inventory[i];
