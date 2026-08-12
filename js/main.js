@@ -1023,16 +1023,30 @@ function draw() {
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.save();
-  // campo de visão em CONE na direção do player + círculo pequeno pessoal
-  const facingAng = { down: Math.PI/2, up: -Math.PI/2, left: Math.PI, right: 0 }[player.facing] || Math.PI/2;
-  const coneSpread = Math.PI * 0.62; // ~110°
-  const personalR = Math.min(42, radius * 0.28) * (player.lanternOn ? 1.15 : 1);
+  // Visão CIRCULAR com oclusão por paredes (raycast)
+  const rays = 96;
+  const px = player.x, py = player.y + (player.footOffset || 0) * 0.35;
   ctx.beginPath();
-  // círculo pessoal (vê os pés / redor imediato)
-  ctx.arc(screenPX, screenPY, personalR, 0, Math.PI * 2);
-  // cone frontal
   ctx.moveTo(screenPX, screenPY);
-  ctx.arc(screenPX, screenPY, radius, facingAng - coneSpread/2, facingAng + coneSpread/2);
+  for (let i = 0; i <= rays; i++) {
+    const ang = (i / rays) * Math.PI * 2;
+    const cos = Math.cos(ang), sin = Math.sin(ang);
+    let dist = radius / z; // em coords de mundo
+    // marcha de raios até bater em parede
+    const step = 6;
+    let hit = dist;
+    for (let d = step; d <= dist; d += step) {
+      const wx = px + cos * d;
+      const wy = py + sin * d;
+      if (typeof isSolid === 'function' && isSolid(wx, wy)) {
+        hit = d;
+        break;
+      }
+    }
+    const sx = (px + cos * hit - camX) * z;
+    const sy = (py + sin * hit - camY) * z;
+    ctx.lineTo(sx, sy);
+  }
   ctx.closePath();
   ctx.clip();
   ctx.save();
