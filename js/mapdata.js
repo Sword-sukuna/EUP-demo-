@@ -193,13 +193,14 @@ const FLOOR2_WINDOWS = [
 // 3) chave_f2c (após porta leste) → porta leste-inferior (1803,1009)
 // 4) chave_boss → porta do sótão
 const FLOOR2_ITEMS = [
-  { x: 1120, y: 950,  type: 'chave_f2a', taken: false },
-  { x: 500,  y: 1400, type: 'chave_f2b', taken: false },
-  { x: 1900, y: 400,  type: 'chave_f2c', taken: false },
-  { x: 1950, y: 1200, type: 'chave_boss', taken: false },
-  { x: 1000, y: 1200, type: 'cafe', taken: false },
-  { x: 280,  y: 450,  type: 'cafe', taken: false },
-  { x: 400,  y: 900,  type: 'cafe', taken: false },
+  // chaves em tiles ANDÁVEIS (verificado no collision-map-2)
+  { x: 1129, y: 800,  type: 'chave_f2a', taken: false },  // corredor, perto do spawn
+  { x: 500,  y: 1400, type: 'chave_f2b', taken: false },  // sul (após porta sul)
+  { x: 2031, y: 300,  type: 'chave_f2c', taken: false },  // leste (após porta leste)
+  { x: 1925, y: 1323, type: 'chave_boss', taken: false }, // SE (após porta interior)
+  { x: 919,  y: 1491, type: 'cafe', taken: false },
+  { x: 313,  y: 829,  type: 'cafe', taken: false },
+  { x: 1993, y: 566,  type: 'cafe', taken: false },
 ];
 
 const FLOOR2_DOORS = [
@@ -223,12 +224,21 @@ const FLOOR2_EXIT_F1 = { x: 1129, y: 690, r: 50 };
 
 // Inimigos 2º andar
 const MAP_ENEMIES_F2 = [
-  { x: 300,  y: 400,  type: 'fantasma' },
-  { x: 450,  y: 1300, type: 'vulto' },
+  { x: 300, y: 400, type: 'fantasma' },
+  { x: 450, y: 1300, type: 'vulto' },
   { x: 1100, y: 1100, type: 'aranha' },
-  { x: 1700, y: 400,  type: 'fantasma' },
-  { x: 1900, y: 1200, type: 'vulto' },
-  { x: 900,  y: 500,  type: 'fantasma' },
+  { x: 1665, y: 365, type: 'fantasma' },
+  { x: 1850, y: 1250, type: 'vulto' },
+  { x: 900, y: 500, type: 'fantasma' },
+  { x: 700, y: 400, type: 'aranha' },
+  { x: 400, y: 900, type: 'fantasma' },
+  { x: 1500, y: 1400, type: 'aranha' },
+  { x: 1800, y: 900, type: 'fantasma' },
+  { x: 255, y: 1135, type: 'vulto' },
+  { x: 1300, y: 300, type: 'aranha' },
+  { x: 1600, y: 1100, type: 'vulto' },
+  { x: 800, y: 1400, type: 'fantasma' },
+  { x: 1945, y: 555, type: 'aranha' },
 ];
 
 const KEY_LABELS_EXTRA = {
