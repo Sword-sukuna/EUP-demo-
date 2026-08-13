@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Ecos da Última Porta — DEMO</title>
   <link rel="stylesheet" href="css/style.css" />
 </head>
@@ -67,12 +67,70 @@
       <p class="hint">WASD — mover · E — interagir · F — lanterna<br>1-4 — item · Espaço — atacar · C — debug</p>
       <button id="btn-continue" class="hidden">CONTINUAR</button>
       <button id="btn-start">NOVO JOGO</button>
+      <button id="btn-exit" type="button">SAIR</button>
+    </div>
+
+    <div id="touch-controls" class="hidden" aria-hidden="true">
+      <div id="stick-zone">
+        <div id="stick-base"><div id="stick-knob"></div></div>
+      </div>
+      <div id="touch-btns">
+        <button type="button" id="btn-touch-e" data-act="e">E</button>
+        <button type="button" id="btn-touch-f" data-act="f">F</button>
+        <button type="button" id="btn-touch-atk" data-act="atk">ATK</button>
+      </div>
+    </div>
+
+    <div id="ending-overlay" class="hidden">
+      <canvas id="endingCanvas" width="1280" height="720"></canvas>
+      <div id="ending-text"></div>
+      <div id="credits-panel" class="hidden">
+        <h2>ECOS DA ÚLTIMA PORTA</h2>
+        <p class="cred-sub">DEMO · ALPHA</p>
+        <div class="cred-scroll">
+          <div class="cred-section">
+            <p class="cred-role">Programação &amp; Liderança</p>
+            <p class="cred-name">Raul</p>
+          </div>
+          <div class="cred-section">
+            <p class="cred-role">Design Artístico · Composição Musical · Ideias</p>
+            <p class="cred-name">Julio</p>
+          </div>
+          <div class="cred-section">
+            <p class="cred-role">Documentação</p>
+            <p class="cred-name">Gian</p>
+          </div>
+          <div class="cred-section">
+            <p class="cred-role">Marketing</p>
+            <p class="cred-name">Vitinho</p>
+          </div>
+          <div class="cred-section">
+            <p class="cred-role">Inspirações</p>
+            <p class="cred-name">The Binding of Isaac</p>
+            <p class="cred-name">Resident Evil · Silent Hill</p>
+            <p class="cred-name">Horror top-down clássico</p>
+          </div>
+          <div class="cred-section">
+            <p class="cred-role">Sobre</p>
+            <p class="cred-name soft">Uma mansão. Os medos de quem partiu.</p>
+            <p class="cred-name soft">Sanidade. Chaves. A última porta.</p>
+          </div>
+          <p class="cred-end">FIM DA DEMO</p>
+          <p class="cred-thanks">Obrigado por jogar</p>
+        </div>
+        <button id="btn-ending-menu" class="hidden">TELA INICIAL</button>
+      </div>
+      <div id="postcredits-panel" class="hidden">
+        <p id="postcredits-text"></p>
+        <button id="btn-postcredits-menu">TELA INICIAL</button>
+      </div>
     </div>
 
     <div id="gameover-screen" class="hidden">
       <h1>SANIDADE ESGOTADA</h1>
       <p>Os medos a consumiram por completo...</p>
-      <button id="btn-restart">TENTAR NOVAMENTE</button>
+      <button id="btn-continue-death">CONTINUAR</button>
+      <button id="btn-menu">TELA INICIAL</button>
     </div>
   </div>
 

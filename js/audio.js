@@ -170,6 +170,66 @@ const AudioSys = {
     this._noise(0.15, 0.28, 400, 'lowpass');
     this._osc('triangle', 200, 0.12, 0.12);
   },
+
+  /** abaixa música e entra clima macabro */
+  enterEndingMood() {
+    this.init();
+    if (!this.ctx) return;
+    if (this.musicGain) {
+      const t = this._now();
+      this.musicGain.gain.cancelScheduledValues(t);
+      this.musicGain.gain.setValueAtTime(this.musicGain.gain.value, t);
+      this.musicGain.gain.linearRampToValueAtTime(0.06, t + 1.5);
+    }
+    // drone grave contínuo curto
+    this._endingDrone();
+  },
+
+  _endingDrone() {
+    if (!this.ctx || this.muted) return;
+    const t = this._now();
+    const o = this.ctx.createOscillator();
+    const o2 = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    o.type = 'sawtooth';
+    o2.type = 'sine';
+    o.frequency.value = 36;
+    o2.frequency.value = 37.5;
+    g.gain.setValueAtTime(0.001, t);
+    g.gain.linearRampToValueAtTime(0.12, t + 1.2);
+    g.gain.linearRampToValueAtTime(0.08, t + 6);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 10);
+    o.connect(g); o2.connect(g);
+    g.connect(this.sfxGain);
+    o.start(t); o2.start(t);
+    o.stop(t + 10.1); o2.stop(t + 10.1);
+  },
+
+  jumpScare() {
+    if (!this.ctx || this.muted) return;
+    // stinger forte
+    this._noise(0.35, 0.9, 800, 'bandpass');
+    this._noise(0.25, 0.7, 3000, 'highpass');
+    this._osc('sawtooth', 90, 0.4, 0.5, 30);
+    this._osc('square', 180, 0.2, 0.4, 50);
+    this._osc('sine', 40, 0.8, 0.35, 20);
+    // boost breve no master
+    if (this.master) {
+      const t = this._now();
+      const v = this.master.gain.value;
+      this.master.gain.setValueAtTime(v, t);
+      this.master.gain.linearRampToValueAtTime(Math.min(1, v + 0.15), t + 0.05);
+      this.master.gain.linearRampToValueAtTime(v, t + 0.5);
+    }
+  },
+
+  restoreMusic() {
+    if (!this.musicGain || !this.ctx) return;
+    const t = this._now();
+    this.musicGain.gain.cancelScheduledValues(t);
+    this.musicGain.gain.setValueAtTime(this.musicGain.gain.value, t);
+    this.musicGain.gain.linearRampToValueAtTime(0.26, t + 1.5);
+  },
 };
 
 ['pointerdown', 'keydown'].forEach(ev => {

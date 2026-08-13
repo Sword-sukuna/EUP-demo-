@@ -12,6 +12,7 @@ function itemIcon(item) {
     chave_beco: '🔑',
     chave_f2a: '🔑',
     chave_f2b: '🔑',
+    chave_f2c: '🔑',
     chave_boss: '🔑',
     carta_2andar: '📜',
   };

@@ -332,6 +332,273 @@ function updateIntro() {
 }
 
 
+
+// ========== FINAL A — cutscene sótão ==========
+let endingActive = false;
+let endingPhase = 'none';
+let endingTimer = 0;
+let endingChar = 0;
+let endingLine = 0;
+let endingFull = '';
+let endingScareImg = null;
+let endingShake = 0;
+let endingBossScale = 0.2;
+let endingFlash = 0;
+
+const ENDING_LINES = [
+  'A porta se fecha atrás de você.',
+  'No escuro, algo se move...',
+  'Você reconhece o rosto.',
+  'Não é ela.\nÉ o que restou do medo que ela carregava.',
+  'A mansão não queria te matar.\nQueria que você ficasse.',
+];
+
+function loadEndingSprite() {
+  if (endingScareImg) return;
+  endingScareImg = new Image();
+  // usa manequim (batendo) até ter sprite da esposa
+  endingScareImg.src = 'assets/sprites/manequim/manequim_batendo_1.png';
+}
+
+function startEnding() {
+  if (endingActive) return;
+  endingActive = true;
+  gameRunning = false; // trava gameplay
+  endingPhase = 'fade_in';
+  endingTimer = 0;
+  endingLine = 0;
+  endingChar = 0;
+  endingFull = '';
+  endingBossScale = 0.15;
+  endingShake = 0;
+  endingFlash = 0;
+  loadEndingSprite();
+  const ov = document.getElementById('ending-overlay');
+  const cred = document.getElementById('credits-panel');
+  const et = document.getElementById('ending-text');
+  if (ov) ov.classList.remove('hidden');
+  if (cred) cred.classList.add('hidden');
+  if (et) { et.textContent = ''; et.style.opacity = '1'; }
+  if (typeof AudioSys !== 'undefined') AudioSys.enterEndingMood();
+}
+
+function skipEndingPhase() {
+  if (!endingActive) return;
+  if (endingPhase === 'text') {
+    // completa linha ou avança
+    if (endingChar < endingFull.length) {
+      endingChar = endingFull.length;
+      const et = document.getElementById('ending-text');
+      if (et) et.textContent = endingFull;
+    } else {
+      endingLine++;
+      endingChar = 0;
+      endingTimer = 0;
+      if (endingLine >= ENDING_LINES.length) {
+        endingPhase = 'jumpscare';
+        endingTimer = 0;
+        if (typeof AudioSys !== 'undefined') AudioSys.jumpScare();
+        endingFlash = 1;
+        endingShake = 18;
+      } else {
+        endingFull = ENDING_LINES[endingLine];
+      }
+    }
+  } else if (endingPhase === 'jumpscare' && endingTimer > 40) {
+    endingPhase = 'credits';
+    endingTimer = 0;
+    showCredits();
+  }
+}
+
+function showCredits() {
+  const et = document.getElementById('ending-text');
+  const cred = document.getElementById('credits-panel');
+  const post = document.getElementById('postcredits-panel');
+  const btn = document.getElementById('btn-ending-menu');
+  if (et) et.textContent = '';
+  if (post) post.classList.add('hidden');
+  if (cred) cred.classList.remove('hidden');
+  if (btn) btn.classList.add('hidden');
+  // após créditos, cena pós-créditos
+  clearTimeout(window._credTimer);
+  window._credTimer = setTimeout(() => {
+    if (!endingActive) return;
+    startPostCredits();
+  }, 7500);
+}
+
+function startPostCredits() {
+  endingPhase = 'postcredits';
+  const cred = document.getElementById('credits-panel');
+  const post = document.getElementById('postcredits-panel');
+  const pt = document.getElementById('postcredits-text');
+  if (cred) cred.classList.add('hidden');
+  if (post) post.classList.remove('hidden');
+  const lines = [
+    '...',
+    'No escuro do sótão,',
+    'algo ainda respira.',
+    '',
+    'Ela voltará.',
+  ];
+  let i = 0;
+  if (pt) pt.textContent = '';
+  if (typeof AudioSys !== 'undefined') {
+    AudioSys.ambientSting();
+    setTimeout(() => AudioSys.jumpScare(), 2200);
+  }
+  clearInterval(window._postCredTw);
+  window._postCredTw = setInterval(() => {
+    if (i < lines.length) {
+      if (pt) pt.textContent = (pt.textContent ? pt.textContent + '\n' : '') + lines[i];
+      if (lines[i] && typeof AudioSys !== 'undefined') AudioSys.talk();
+      i++;
+    } else {
+      clearInterval(window._postCredTw);
+    }
+  }, 900);
+}
+
+function endEndingToMenu() {
+  endingActive = false;
+  endingPhase = 'none';
+  clearTimeout(window._credTimer);
+  clearInterval(window._postCredTw);
+  const ov = document.getElementById('ending-overlay');
+  const cred = document.getElementById('credits-panel');
+  const post = document.getElementById('postcredits-panel');
+  if (ov) ov.classList.add('hidden');
+  if (cred) cred.classList.add('hidden');
+  if (post) post.classList.add('hidden');
+  document.getElementById('start-screen')?.classList.remove('hidden');
+  document.getElementById('gameover-screen')?.classList.add('hidden');
+  gameRunning = false;
+  if (typeof AudioSys !== 'undefined') AudioSys.restoreMusic();
+  const b = document.getElementById('btn-continue');
+  if (b) b.classList.toggle('hidden', !hasSave());
+  updateTouchVisibility();
+}
+
+
+
+
+function updateEnding() {
+  if (!endingActive) return;
+  endingTimer++;
+  if (endingShake > 0) endingShake *= 0.9;
+  if (endingFlash > 0) endingFlash *= 0.85;
+
+  const ecanvas = document.getElementById('endingCanvas');
+  if (!ecanvas) return;
+  const ectx = ecanvas.getContext('2d');
+  const W = ecanvas.width, H = ecanvas.height;
+
+  // fundo preto
+  ectx.fillStyle = '#000';
+  ectx.fillRect(0, 0, W, H);
+
+  const shx = (Math.random() - 0.5) * endingShake;
+  const shy = (Math.random() - 0.5) * endingShake;
+
+  if (endingPhase === 'fade_in') {
+    // vinheta vermelha suave
+    const a = Math.min(1, endingTimer / 50);
+    ectx.fillStyle = `rgba(20,0,0,${0.3 * a})`;
+    ectx.fillRect(0, 0, W, H);
+    if (endingTimer > 55) {
+      endingPhase = 'text';
+      endingTimer = 0;
+      endingLine = 0;
+      endingFull = ENDING_LINES[0];
+      endingChar = 0;
+    }
+  } else if (endingPhase === 'text') {
+    // silhueta distante
+    if (endingScareImg && endingScareImg.complete) {
+      const s = 0.35 + Math.sin(endingTimer * 0.03) * 0.02;
+      const iw = endingScareImg.naturalWidth * s;
+      const ih = endingScareImg.naturalHeight * s;
+      ectx.globalAlpha = 0.35;
+      ectx.drawImage(endingScareImg, W/2 - iw/2 + shx, H/2 - ih/2 + 40 + shy, iw, ih);
+      ectx.globalAlpha = 1;
+    }
+    // typewriter
+    if (endingTimer % 2 === 0 && endingChar < endingFull.length) {
+      endingChar++;
+      const ch = endingFull[endingChar - 1];
+      if (ch && ch !== ' ' && typeof AudioSys !== 'undefined') AudioSys.talk();
+      const et = document.getElementById('ending-text');
+      if (et) et.textContent = endingFull.slice(0, endingChar);
+    }
+    // pausa após linha completa
+    if (endingChar >= endingFull.length && endingTimer > endingFull.length * 2 + 90) {
+      endingLine++;
+      endingTimer = 0;
+      endingChar = 0;
+      if (endingLine >= ENDING_LINES.length) {
+        endingPhase = 'jumpscare';
+        endingTimer = 0;
+        if (typeof AudioSys !== 'undefined') AudioSys.jumpScare();
+        endingFlash = 1;
+        endingShake = 22;
+        const et = document.getElementById('ending-text');
+        if (et) et.textContent = '';
+      } else {
+        endingFull = ENDING_LINES[endingLine];
+        const et = document.getElementById('ending-text');
+        if (et) et.textContent = '';
+      }
+    }
+  } else if (endingPhase === 'jumpscare') {
+    // monstro avança
+    endingBossScale = Math.min(2.8, 0.2 + endingTimer * 0.08);
+    if (endingScareImg && endingScareImg.complete) {
+      const s = endingBossScale;
+      const iw = endingScareImg.naturalWidth * s * 0.5;
+      const ih = endingScareImg.naturalHeight * s * 0.5;
+      ectx.save();
+      ectx.translate(W/2 + shx, H/2 + 60 + shy);
+      // flicker
+      ectx.globalAlpha = 0.85 + Math.random() * 0.15;
+      ectx.drawImage(endingScareImg, -iw/2, -ih/2, iw, ih);
+      ectx.restore();
+    }
+    // flash branco/vermelho
+    if (endingFlash > 0.05) {
+      ectx.fillStyle = `rgba(255,${40*endingFlash},${40*endingFlash},${endingFlash * 0.7})`;
+      ectx.fillRect(0, 0, W, H);
+    }
+    // vinheta sangue
+    ectx.fillStyle = 'rgba(40,0,0,0.45)';
+    ectx.fillRect(0, 0, W, H);
+
+    if (endingTimer > 90) {
+      endingPhase = 'hold';
+      endingTimer = 0;
+    }
+  } else if (endingPhase === 'hold') {
+    // fica no escuro um pouco
+    ectx.fillStyle = '#000';
+    ectx.fillRect(0, 0, W, H);
+    if (endingScareImg && endingScareImg.complete && endingTimer < 40) {
+      ectx.globalAlpha = 0.15;
+      const iw = 200, ih = 280;
+      ectx.drawImage(endingScareImg, W/2 - iw/2, H/2 - ih/2, iw, ih);
+      ectx.globalAlpha = 1;
+    }
+    if (endingTimer > 70) {
+      endingPhase = 'credits';
+      endingTimer = 0;
+      showCredits();
+    }
+  } else if (endingPhase === 'credits') {
+    ectx.fillStyle = '#050302';
+    ectx.fillRect(0, 0, W, H);
+  }
+}
+
+
 function initGame() {
   currentFloor = 1;
   player = new Player(1100, 1480); // spawn no BAR
@@ -353,6 +620,7 @@ function initGame() {
   document.getElementById('gameover-screen').classList.add('hidden');
   // cinemática de abertura (dormindo no bar)
   startIntroCinematic();
+  updateTouchVisibility();
 }
 
 function onEliteDefeated(x, y) {
@@ -376,7 +644,7 @@ function goToFloor2() {
     if (player.inventory[i] === 'carta_2andar') player.inventory[i] = null;
   }
   items = items.filter(it => it.type !== 'carta_2andar');
-  showMessage('2º andar. Objetivo: chave central → oeste → leste → sótão.', 4200);
+  showMessage('2º andar: chave → porta sul → leste → interior → sótão.', 4200);
   showSpeech('A carta se desfez nas escadas. O ar aqui em cima é mais frio...');
 }
 
@@ -409,6 +677,13 @@ function hitsDynamic(px, py, rad) {
 window.addEventListener('keydown', e => {
   keys[e.key.toLowerCase()] = true;
   if (!gameRunning) return;
+  if (endingActive) {
+    if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ' || e.key.toLowerCase() === 'e') {
+      e.preventDefault();
+      skipEndingPhase();
+    }
+    return;
+  }
   if (introActive) {
     if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ' || e.key.toLowerCase() === 'e') {
       e.preventDefault();
@@ -764,7 +1039,7 @@ function interact() {
       const d = FLOOR2_BOSS_DOOR;
       if (Math.hypot(fx - d.x, fy - d.y) < 60) {
         if (bossDoorUnlocked || isDoorUnlocked(d.x, d.y)) {
-          showSpeech('A porta do sótão está aberta... (boss em breve)');
+          startEnding();
         } else if (player.hasItem('chave_boss')) {
           unlockDoorAt(d.x, d.y, 'boss');
           bossDoorUnlocked = true;
@@ -793,7 +1068,8 @@ function interact() {
       return;
     }
     if (tt === 'boss_door') {
-      showSpeech(bossDoorUnlocked ? 'Porta do sótão aberta.' : 'Porta do sótão. Trancada.');
+      if (bossDoorUnlocked || isDoorUnlocked(fx, fy)) startEnding();
+      else showSpeech('Porta do sótão. Trancada.');
       return;
     }
     if (tt === 'interact') { showSpeech('Nada de especial...'); return; }
@@ -1001,8 +1277,9 @@ function getObjective() {
     if (bossDoorUnlocked || (typeof isDoorUnlocked === 'function' && typeof FLOOR2_BOSS_DOOR !== 'undefined' && isDoorUnlocked(FLOOR2_BOSS_DOOR.x, FLOOR2_BOSS_DOOR.y)))
       return 'Objetivo: entrar no sótão';
     if (player.hasItem('chave_boss')) return 'Objetivo: use a Chave do Sótão na porta escura';
-    if (player.hasItem('chave_f2b')) return 'Objetivo: abra a porta leste → pegue a chave do sótão';
-    if (player.hasItem('chave_f2a')) return 'Objetivo: abra a porta oeste → pegue a próxima chave';
+    if (player.hasItem('chave_f2c')) return 'Objetivo: abra a porta interior → pegue a chave do sótão';
+    if (player.hasItem('chave_f2b')) return 'Objetivo: abra a porta leste → próxima chave';
+    if (player.hasItem('chave_f2a')) return 'Objetivo: abra a porta sul → próxima chave';
     return 'Objetivo: pegue a chave no corredor central';
   }
   // 1º andar
@@ -1036,6 +1313,11 @@ function update() {
   if (keys['s'] || keys['arrowdown']) dy = 1;
   if (keys['a'] || keys['arrowleft']) dx = -1;
   if (keys['d'] || keys['arrowright']) dx = 1;
+  // mobile stick
+  if (typeof touchState !== 'undefined' && touchState.active) {
+    if (Math.abs(touchState.dx) > 0.2) dx = touchState.dx > 0 ? 1 : -1;
+    if (Math.abs(touchState.dy) > 0.2) dy = touchState.dy > 0 ? 1 : -1;
+  }
   if (!player.attacking && !letterOpen && !storageOpen) {
     player.applyMove(dx, dy);
   }
@@ -1071,7 +1353,17 @@ function update() {
   if (player.sanity <= 0) {
     gameRunning = false;
     if (typeof AudioSys !== 'undefined') AudioSys.death();
-    document.getElementById('gameover-screen').classList.remove('hidden');
+    const go = document.getElementById('gameover-screen');
+    go.classList.remove('hidden');
+    const bc = document.getElementById('btn-continue-death');
+    if (bc) {
+      if (hasSave()) {
+        bc.classList.remove('hidden');
+        bc.textContent = 'CONTINUAR';
+      } else {
+        bc.classList.add('hidden');
+      }
+    }
   }
   updateHUD(player, getZoneName());
   updatePrompt();
@@ -1377,18 +1669,49 @@ function draw() {
 }
 
 function loop() {
-  update();
-  draw();
+  if (endingActive) updateEnding();
+  else {
+    update();
+    draw();
+  }
+  if (typeof updateTouchVisibility === 'function' && frame % 30 === 0) updateTouchVisibility();
   requestAnimationFrame(loop);
 }
 document.getElementById('btn-start').addEventListener('click', () => {
   try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
   initGame();
 });
-document.getElementById('btn-restart').addEventListener('click', () => {
-  try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
-  initGame();
+
+// morte: CONTINUAR = último save
+document.getElementById('btn-continue-death')?.addEventListener('click', () => {
+  document.getElementById('gameover-screen').classList.add('hidden');
+  if (hasSave()) {
+    if (!loadGame()) {
+      // save corrompido — menu
+      document.getElementById('start-screen').classList.remove('hidden');
+      gameRunning = false;
+    }
+  } else {
+    showMessage('Nenhum save encontrado. Voltando ao menu...', 2500);
+    document.getElementById('start-screen').classList.remove('hidden');
+    gameRunning = false;
+    const b = document.getElementById('btn-continue');
+    if (b) b.classList.add('hidden');
+  }
 });
+
+// morte: TELA INICIAL
+document.getElementById('btn-menu')?.addEventListener('click', () => {
+  document.getElementById('gameover-screen').classList.add('hidden');
+  document.getElementById('start-screen').classList.remove('hidden');
+  gameRunning = false;
+  introActive = false;
+  setIntroUI(false);
+  const b = document.getElementById('btn-continue');
+  if (b) b.classList.toggle('hidden', !hasSave());
+});
+
+// menu: CONTINUAR
 const btnCont = document.getElementById('btn-continue');
 if (btnCont) {
   if (hasSave()) btnCont.classList.remove('hidden');
@@ -1397,11 +1720,145 @@ if (btnCont) {
     if (!loadGame()) initGame();
   });
 }
-// atualiza botão continuar ao voltar pro menu
+
+// menu: SAIR
+document.getElementById('btn-exit')?.addEventListener('click', () => {
+  // tenta fechar a aba/janela; se o browser bloquear, mostra aviso
+  window.close();
+  document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0a0806;color:#c0a080;font-family:serif;letter-spacing:2px;text-align:center;padding:24px">Você pode fechar esta aba.<br><span style="opacity:.6;font-size:14px">Obrigado por jogar Ecos da Última Porta.</span></div>';
+});
+
 window.addEventListener('focus', () => {
   const b = document.getElementById('btn-continue');
   if (b) b.classList.toggle('hidden', !hasSave());
 });
+
 loop();
 
 document.getElementById('btn-skip-intro')?.addEventListener('click', skipIntro);
+
+document.getElementById('btn-ending-menu')?.addEventListener('click', endEndingToMenu);
+document.getElementById('ending-overlay')?.addEventListener('click', () => {
+  if (endingActive && endingPhase !== 'credits') skipEndingPhase();
+});
+
+
+// ========== MOBILE / TOUCH ==========
+const touchState = { active: false, dx: 0, dy: 0, id: null };
+
+function isMobileLike() {
+  return window.matchMedia('(pointer: coarse)').matches
+    || window.matchMedia('(max-width: 900px)').matches
+    || 'ontouchstart' in window;
+}
+
+function updateTouchVisibility() {
+  const el = document.getElementById('touch-controls');
+  if (!el) return;
+  const show = isMobileLike() && gameRunning && !endingActive && !introActive
+    && document.getElementById('start-screen')?.classList.contains('hidden')
+    && document.getElementById('gameover-screen')?.classList.contains('hidden');
+  el.classList.toggle('hidden', !show);
+  el.setAttribute('aria-hidden', show ? 'false' : 'true');
+}
+
+function setupTouchControls() {
+  const base = document.getElementById('stick-base');
+  const knob = document.getElementById('stick-knob');
+  const zone = document.getElementById('stick-zone');
+  if (!base || !knob || !zone) return;
+
+  const maxR = 36;
+
+  function setKnob(dx, dy) {
+    const len = Math.hypot(dx, dy) || 1;
+    const c = Math.min(1, maxR / len);
+    knob.style.transform = `translate(calc(-50% + ${dx * c}px), calc(-50% + ${dy * c}px))`;
+  }
+
+  function onStart(e) {
+    e.preventDefault();
+    const t = e.changedTouches ? e.changedTouches[0] : e;
+    touchState.active = true;
+    touchState.id = t.identifier;
+    onMove(e);
+  }
+  function onMove(e) {
+    if (!touchState.active) return;
+    e.preventDefault();
+    let t = null;
+    if (e.changedTouches) {
+      for (const ct of e.changedTouches) {
+        if (ct.identifier === touchState.id) { t = ct; break; }
+      }
+      if (!t && e.touches) {
+        for (const ct of e.touches) {
+          if (ct.identifier === touchState.id) { t = ct; break; }
+        }
+      }
+    } else t = e;
+    if (!t) return;
+    const rect = base.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    let dx = t.clientX - cx;
+    let dy = t.clientY - cy;
+    const len = Math.hypot(dx, dy);
+    if (len > maxR) { dx = dx / len * maxR; dy = dy / len * maxR; }
+    setKnob(dx, dy);
+    const dead = 8;
+    touchState.dx = Math.abs(dx) < dead ? 0 : dx / maxR;
+    touchState.dy = Math.abs(dy) < dead ? 0 : dy / maxR;
+  }
+  function onEnd(e) {
+    if (e.changedTouches) {
+      let ok = false;
+      for (const ct of e.changedTouches) if (ct.identifier === touchState.id) ok = true;
+      if (!ok) return;
+    }
+    touchState.active = false;
+    touchState.dx = 0;
+    touchState.dy = 0;
+    touchState.id = null;
+    setKnob(0, 0);
+  }
+
+  zone.addEventListener('touchstart', onStart, { passive: false });
+  zone.addEventListener('touchmove', onMove, { passive: false });
+  zone.addEventListener('touchend', onEnd, { passive: false });
+  zone.addEventListener('touchcancel', onEnd, { passive: false });
+
+  // action buttons
+  function bindBtn(id, down, up) {
+    const b = document.getElementById(id);
+    if (!b) return;
+    const d = (e) => { e.preventDefault(); b.classList.add('active'); down(); };
+    const u = (e) => { e.preventDefault(); b.classList.remove('active'); if (up) up(); };
+    b.addEventListener('touchstart', d, { passive: false });
+    b.addEventListener('touchend', u, { passive: false });
+    b.addEventListener('mousedown', d);
+    b.addEventListener('mouseup', u);
+  }
+  bindBtn('btn-touch-e', () => {
+    if (endingActive) { skipEndingPhase(); return; }
+    if (introActive) { skipIntro(); return; }
+    interact();
+  });
+  bindBtn('btn-touch-f', () => {
+    if (!player || !gameRunning) return;
+    if (player.hasLantern) {
+      player.lanternOn = !player.lanternOn;
+      showMessage(player.lanternOn ? 'Lanterna ligada.' : 'Lanterna desligada.');
+    } else showMessage('Sem lanterna.');
+  });
+  bindBtn('btn-touch-atk', () => { if (gameRunning && !endingActive) attack(); });
+
+  window.addEventListener('resize', updateTouchVisibility);
+  updateTouchVisibility();
+}
+
+// inject touch movement into update - done via patch below
+
+document.getElementById('btn-postcredits-menu')?.addEventListener('click', endEndingToMenu);
+document.getElementById('btn-ending-menu')?.addEventListener('click', endEndingToMenu);
+setupTouchControls();

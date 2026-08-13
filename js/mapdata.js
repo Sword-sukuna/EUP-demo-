@@ -186,28 +186,31 @@ const FLOOR2_WINDOWS = [
   { x: 234,  y: 1575, open: false },
 ];
 
-// ===== 2º ANDAR — mesma lógica do 1º =====
-// Spawn perto da escada (centro).
-// 1) chave_f2a (corredor central, livre) → abre porta oeste
-// 2) chave_f2b (quarto oeste, atrás da porta) → abre porta leste
-// 3) chave_boss (quarto leste, atrás da porta leste) → porta do sótão
+// ===== 2º ANDAR — cadeia como o 1º =====
+// Spawn centro. 3 portas azuis + porta boss.
+// 1) chave_f2a (corredor) → porta sul (700,1186)
+// 2) chave_f2b (após porta sul) → porta leste (1550,690)
+// 3) chave_f2c (após porta leste) → porta leste-inferior (1803,1009)
+// 4) chave_boss → porta do sótão
 const FLOOR2_ITEMS = [
-  { x: 1120, y: 950,  type: 'chave_f2a', taken: false },  // centro, acessível
-  { x: 280,  y: 450,  type: 'chave_f2b', taken: false },  // oeste (após porta o)
-  { x: 1950, y: 1100, type: 'chave_boss', taken: false }, // leste (após porta l)
+  { x: 1120, y: 950,  type: 'chave_f2a', taken: false },
+  { x: 500,  y: 1400, type: 'chave_f2b', taken: false },
+  { x: 1900, y: 400,  type: 'chave_f2c', taken: false },
+  { x: 1950, y: 1200, type: 'chave_boss', taken: false },
   { x: 1000, y: 1200, type: 'cafe', taken: false },
-  { x: 400,  y: 1400, type: 'cafe', taken: false },
-  { x: 1800, y: 400,  type: 'cafe', taken: false },
+  { x: 280,  y: 450,  type: 'cafe', taken: false },
+  { x: 400,  y: 900,  type: 'cafe', taken: false },
 ];
 
 const FLOOR2_DOORS = [
-  { id: 'f2_porta_o', x: 600,  y: 800,  key: 'chave_f2a', label: 'Porta Oeste 2º', locked: true },
+  { id: 'f2_porta_s', x: 700,  y: 1186, key: 'chave_f2a', label: 'Porta Sul 2º', locked: true },
   { id: 'f2_porta_l', x: 1550, y: 690,  key: 'chave_f2b', label: 'Porta Leste 2º', locked: true },
+  { id: 'f2_porta_li', x: 1803, y: 1009, key: 'chave_f2c', label: 'Porta Leste Inferior', locked: true },
 ];
 
 // Notas 2º andar
 const FLOOR2_NOTES = [
-  { x: 1120, y: 800, id: 'f2n0', text: "Mapa do 2º:\n\n1) Chave no corredor central\n2) Porta oeste → outra chave\n3) Porta leste → chave do sótão\n4) Porta escura (sótão)\n\nFeche as janelas. O ar gelado drena a sanidade.", read: false },
+  { x: 1120, y: 800, id: 'f2n0', text: "Mapa do 2º:\n\n1) Chave no corredor\n2) Porta sul → próxima chave\n3) Porta leste → próxima chave\n4) Porta interior → chave do sótão\n5) Porta escura (sótão)\n\nFeche as janelas. O ar gelado drena a sanidade.", read: false },
   { x: 700, y: 400, id: 'f2n1', text: "Diário:\n\n\"O sótão guarda o que não deveria existir.\nA porta escura só abre com a chave certa.\"", read: false },
   { x: 1800, y: 500, id: 'f2n2', text: "Bilhete:\n\n\"As janelas... não as deixe abertas.\nO frio come a mente.\"", read: false },
 ];
@@ -230,7 +233,8 @@ const MAP_ENEMIES_F2 = [
 
 const KEY_LABELS_EXTRA = {
   chave_boss: 'Chave do Sótão',
-  chave_f2a: 'Chave do 2º Oeste',
-  chave_f2b: 'Chave do 2º Leste',
+  chave_f2a: 'Chave 2º — Sul',
+  chave_f2b: 'Chave 2º — Leste',
+  chave_f2c: 'Chave 2º — Interior',
 };
 Object.assign(KEY_LABELS, KEY_LABELS_EXTRA);
