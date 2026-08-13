@@ -33,11 +33,12 @@ class Enemy {
     this.idleDX = 0;
     this.idleDY = 0;
 
+    // 1º andar um pouco mais tenso; 2º usa scale em spawn
     const stats = {
-      fantasma: { hp: 45, speed: 1.05, damage: 10, size: 20, alert: 85, chase: 160 },
-      vulto:    { hp: 35, speed: 1.4,  damage: 14, size: 18, alert: 75, chase: 140 },
-      aranha:   { hp: 55, speed: 1.25, damage: 12, size: 22, alert: 90, chase: 155 },
-      elite:    { hp: 140, speed: 0.9, damage: 22, size: 30, alert: 100, chase: 200 }
+      fantasma: { hp: 40, speed: 1.0,  damage: 8,  size: 20, alert: 95, chase: 150 },
+      vulto:    { hp: 30, speed: 1.25, damage: 10, size: 18, alert: 85, chase: 135 },
+      aranha:   { hp: 48, speed: 1.15, damage: 9,  size: 22, alert: 100, chase: 145 },
+      elite:    { hp: 120, speed: 0.85, damage: 16, size: 30, alert: 110, chase: 180 }
     };
     const s = stats[type] || stats.fantasma;
     Object.assign(this, s);
@@ -74,16 +75,24 @@ class Enemy {
     const loseR = chaseR * 1.25;
 
     // entra em aggro só se o jogador chegar perto
-    if (!this.aggro && dist < alertR) this.aggro = true;
+    if (!this.aggro && dist < alertR) {
+      this.aggro = true;
+      if (typeof AudioSys !== 'undefined') AudioSys.monsterAggro(this.type);
+    }
     // perde aggro se fugir longe
     if (this.aggro && dist > loseR) this.aggro = false;
+    // som idle ocasional se perto
+    if (!this.aggro && dist < alertR * 1.6 && Math.random() < 0.002) {
+      if (typeof AudioSys !== 'undefined') AudioSys.monsterIdle();
+    }
 
     if (this.aggro && dist < chaseR) {
       // PERSEGUE
       if (dist < this.size + 14) {
         this.state = 'batendo';
         if (dx !== 0) this.facing = dx > 0 ? 1 : -1;
-        player.takeDamage(this.damage * 0.14);
+        // dano a cada ~0.5s (invincible do player controla)
+        player.takeDamage(this.damage);
       } else if (dist > 12) {
         this.state = this.flash > 0 ? 'dano' : 'andando';
         const sp = this.speed;
@@ -188,5 +197,15 @@ function spawnMapEnemies() {
 
 function spawnMapEnemiesFloor2() {
   if (typeof MAP_ENEMIES_F2 === 'undefined') return [];
-  return MAP_ENEMIES_F2.map(e => new Enemy(e.x, e.y, e.type));
+  return MAP_ENEMIES_F2.map(e => {
+    const en = new Enemy(e.x, e.y, e.type);
+    // 2º andar: menos agressivo
+    en.hp = Math.floor(en.hp * 0.85);
+    en.maxHp = en.hp;
+    en.damage = Math.max(5, Math.floor(en.damage * 0.7));
+    en.speed *= 0.85;
+    en.alert *= 0.9;
+    en.chase *= 0.9;
+    return en;
+  });
 }

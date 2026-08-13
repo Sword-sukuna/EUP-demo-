@@ -88,7 +88,7 @@ class Player {
   takeDamage(amount) {
     if (this.invincible > 0) return;
     this.sanity = Math.max(0, this.sanity - amount);
-    this.invincible = 40;
+    this.invincible = 55;
     if (typeof AudioSys !== 'undefined') AudioSys.playerHurt();
   }
 

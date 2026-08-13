@@ -7,6 +7,9 @@ const AudioSys = {
   sfxGain: null,
   unlocked: false,
   muted: false,
+  _hurtCD: 0,
+  _talkCD: 0,
+  _monsterCD: 0,
 
   init() {
     if (this.ctx) return;
@@ -14,13 +17,13 @@ const AudioSys = {
     if (!AC) return;
     this.ctx = new AC();
     this.master = this.ctx.createGain();
-    this.master.gain.value = 0.85;
+    this.master.gain.value = 0.9;
     this.master.connect(this.ctx.destination);
     this.musicGain = this.ctx.createGain();
-    this.musicGain.gain.value = 0.28;
+    this.musicGain.gain.value = 0.26;
     this.musicGain.connect(this.master);
     this.sfxGain = this.ctx.createGain();
-    this.sfxGain.gain.value = 0.55;
+    this.sfxGain.gain.value = 0.7;
     this.sfxGain.connect(this.master);
   },
 
@@ -43,33 +46,35 @@ const AudioSys = {
     this.music = a;
   },
 
-  // --- util ---
   _now() { return this.ctx ? this.ctx.currentTime : 0; },
-  _osc(type, freq, dur, vol, dest) {
+
+  _osc(type, freq, dur, vol, slideTo) {
     if (!this.ctx || this.muted) return;
     const t = this._now();
     const o = this.ctx.createOscillator();
     const g = this.ctx.createGain();
     o.type = type;
     o.frequency.setValueAtTime(freq, t);
-    g.gain.setValueAtTime(vol, t);
+    if (slideTo != null) o.frequency.exponentialRampToValueAtTime(Math.max(20, slideTo), t + dur);
+    g.gain.setValueAtTime(Math.max(0.001, vol), t);
     g.gain.exponentialRampToValueAtTime(0.001, t + dur);
     o.connect(g);
-    g.connect(dest || this.sfxGain);
+    g.connect(this.sfxGain);
     o.start(t);
-    o.stop(t + dur + 0.02);
+    o.stop(t + dur + 0.03);
   },
+
   _noise(dur, vol, filterFreq, type) {
     if (!this.ctx || this.muted) return;
     const t = this._now();
-    const n = Math.floor(this.ctx.sampleRate * dur);
+    const n = Math.max(1, Math.floor(this.ctx.sampleRate * dur));
     const buf = this.ctx.createBuffer(1, n, this.ctx.sampleRate);
     const d = buf.getChannelData(0);
     for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
     const src = this.ctx.createBufferSource();
     src.buffer = buf;
     const g = this.ctx.createGain();
-    g.gain.setValueAtTime(vol, t);
+    g.gain.setValueAtTime(Math.max(0.001, vol), t);
     g.gain.exponentialRampToValueAtTime(0.001, t + dur);
     if (filterFreq) {
       const f = this.ctx.createBiquadFilter();
@@ -81,63 +86,92 @@ const AudioSys = {
     src.start(t);
   },
 
-  // --- SFX ---
   punch() {
-    this._noise(0.08, 0.5, 900, 'lowpass');
-    this._osc('square', 90, 0.07, 0.2);
+    this._noise(0.09, 0.55, 1000, 'lowpass');
+    this._osc('square', 100, 0.08, 0.22, 50);
   },
   hit() {
-    this._noise(0.12, 0.45, 600, 'bandpass');
-    this._osc('sawtooth', 140, 0.1, 0.15);
+    this._noise(0.12, 0.5, 700, 'bandpass');
+    this._osc('sawtooth', 160, 0.1, 0.18, 70);
   },
   playerHurt() {
-    this._osc('sine', 220, 0.15, 0.2);
-    this._osc('sine', 160, 0.2, 0.18);
-    this._noise(0.15, 0.25, 400, 'lowpass');
+    // cooldown pra não spammar
+    const now = performance.now();
+    if (now - this._hurtCD < 280) return;
+    this._hurtCD = now;
+    this._osc('square', 280, 0.12, 0.35, 90);
+    this._osc('sine', 180, 0.2, 0.28, 60);
+    this._noise(0.18, 0.4, 500, 'lowpass');
+  },
+  monsterAggro(type) {
+    const now = performance.now();
+    if (now - this._monsterCD < 900) return;
+    this._monsterCD = now;
+    if (type === 'aranha') {
+      this._noise(0.2, 0.35, 2000, 'highpass');
+      this._osc('sawtooth', 320, 0.15, 0.2, 120);
+    } else if (type === 'elite') {
+      this._osc('sawtooth', 70, 0.35, 0.3, 40);
+      this._noise(0.3, 0.35, 300, 'lowpass');
+    } else if (type === 'vulto') {
+      this._osc('sine', 90, 0.4, 0.22, 45);
+      this._noise(0.35, 0.2, 180, 'lowpass');
+    } else {
+      // fantasma
+      this._osc('sine', 420, 0.35, 0.18, 180);
+      this._osc('sine', 210, 0.4, 0.15, 90);
+    }
+  },
+  monsterIdle() {
+    const now = performance.now();
+    if (now - this._monsterCD < 2500) return;
+    this._monsterCD = now;
+    this._osc('sine', 55 + Math.random() * 30, 0.6, 0.08, 30);
+  },
+  talk() {
+    // beep estilo RPG clássico / point-and-click
+    const now = performance.now();
+    if (now - this._talkCD < 45) return;
+    this._talkCD = now;
+    const f = 380 + Math.random() * 220;
+    this._osc('square', f, 0.045, 0.12, f * 0.85);
   },
   pickup() {
-    this._osc('sine', 660, 0.08, 0.15);
-    this._osc('sine', 990, 0.12, 0.12);
+    this._osc('sine', 660, 0.08, 0.18);
+    this._osc('sine', 990, 0.12, 0.14);
   },
   doorUnlock() {
-    this._osc('square', 180, 0.08, 0.12);
-    this._noise(0.2, 0.3, 1200, 'highpass');
-    this._osc('sine', 90, 0.25, 0.15);
+    this._osc('square', 180, 0.08, 0.14);
+    this._noise(0.2, 0.32, 1200, 'highpass');
+    this._osc('sine', 90, 0.25, 0.16);
   },
   doorLocked() {
-    this._osc('square', 70, 0.1, 0.18);
-    this._noise(0.08, 0.2, 300, 'lowpass');
+    this._osc('square', 70, 0.1, 0.2);
+    this._noise(0.08, 0.22, 300, 'lowpass');
   },
   save() {
-    this._osc('sine', 440, 0.15, 0.12);
-    this._osc('sine', 554, 0.2, 0.1);
-    this._osc('sine', 659, 0.25, 0.08);
+    this._osc('sine', 440, 0.15, 0.14);
+    this._osc('sine', 554, 0.2, 0.12);
+    this._osc('sine', 659, 0.25, 0.1);
   },
   window() {
     this._noise(0.25, 0.35, 2500, 'highpass');
   },
-  footsteps() {
-    this._noise(0.04, 0.12, 200, 'lowpass');
-  },
   ambientSting() {
-    this._osc('sine', 55, 1.2, 0.08);
-    this._noise(0.8, 0.1, 150, 'lowpass');
+    this._osc('sine', 55, 1.2, 0.09);
+    this._noise(0.8, 0.12, 150, 'lowpass');
   },
   death() {
-    this._osc('sawtooth', 120, 0.6, 0.2);
-    this._osc('sine', 40, 1.2, 0.25);
-    this._noise(1.0, 0.3, 200, 'lowpass');
-  },
-  typewriter() {
-    this._noise(0.015, 0.08, 3000, 'highpass');
+    this._osc('sawtooth', 120, 0.6, 0.22);
+    this._osc('sine', 40, 1.2, 0.28);
+    this._noise(1.0, 0.32, 200, 'lowpass');
   },
   chest() {
-    this._noise(0.15, 0.25, 400, 'lowpass');
-    this._osc('triangle', 200, 0.12, 0.1);
+    this._noise(0.15, 0.28, 400, 'lowpass');
+    this._osc('triangle', 200, 0.12, 0.12);
   },
 };
 
-// auto-unlock on first input
 ['pointerdown', 'keydown'].forEach(ev => {
   window.addEventListener(ev, () => AudioSys.unlock(), { once: true });
 });

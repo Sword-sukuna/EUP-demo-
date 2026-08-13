@@ -131,8 +131,10 @@ const MAP_ENEMIES = [
   { x: 1950, y: 900,  type: 'aranha' },
   // elite — quarto final (leste inferior)
   { x: 1850, y: 950,  type: 'elite' },
-  // beco
+  // beco / transição
   { x: 1100, y: 1250, type: 'vulto' },
+  { x: 700,  y: 800,  type: 'aranha' },
+  { x: 1500, y: 900,  type: 'fantasma' },
 ];
 
 const ZONES = [
@@ -217,15 +219,11 @@ const FLOOR2_EXIT_F1 = { x: 1129, y: 690, r: 50 };
 // Inimigos 2º andar
 const MAP_ENEMIES_F2 = [
   { x: 300,  y: 400,  type: 'fantasma' },
-  { x: 500,  y: 900,  type: 'vulto' },
-  { x: 400,  y: 1400, type: 'aranha' },
-  { x: 900,  y: 400,  type: 'vulto' },
-  { x: 1300, y: 500,  type: 'fantasma' },
+  { x: 450,  y: 1300, type: 'vulto' },
   { x: 1100, y: 1100, type: 'aranha' },
-  { x: 1700, y: 350,  type: 'fantasma' },
-  { x: 1900, y: 700,  type: 'vulto' },
-  { x: 1800, y: 1300, type: 'aranha' },
-  { x: 1500, y: 1400, type: 'fantasma' },
+  { x: 1700, y: 400,  type: 'fantasma' },
+  { x: 1900, y: 1200, type: 'vulto' },
+  { x: 900,  y: 500,  type: 'fantasma' },
 ];
 
 const KEY_LABELS_EXTRA = {

@@ -304,6 +304,8 @@ function updateIntro() {
         introChar++;
         const it = document.getElementById('intro-text');
         if (it) it.textContent = introFull.slice(0, introChar);
+        const ch = introFull[introChar - 1];
+        if (ch && ch !== ' ' && typeof AudioSys !== 'undefined') AudioSys.talk();
       }
       if (introChar >= introFull.length) {
         introPlaying = false;
@@ -446,6 +448,10 @@ function typewriter(el, fullText, speed, done) {
   typewriterTimer = setInterval(() => {
     i++;
     el.textContent = fullText.slice(0, i);
+    // som de fala estilo RPG antigo
+    if (fullText[i-1] && fullText[i-1] !== ' ' && typeof AudioSys !== 'undefined') {
+      AudioSys.talk();
+    }
     if (i >= fullText.length) {
       clearInterval(typewriterTimer);
       typewriterTimer = null;
@@ -1008,21 +1014,26 @@ function update() {
   if (!player.lanternOn && frame % 100 === 0) player.sanity = Math.max(0, player.sanity - 1);
   if (frame % 900 === 0 && typeof AudioSys !== 'undefined') AudioSys.ambientSting();
   for (const obj of interactables) {
-    if (obj.type === 'janela' && obj.open && frame % 45 === 0)
-      player.sanity = Math.max(0, player.sanity - 2);
+    if (obj.type === 'janela' && obj.open && frame % 120 === 0)
+      player.sanity = Math.max(0, player.sanity - 1);
   }
   if (currentFloor === 2) {
-    // janelas abrem/fecham sozinhas de vez em quando
-    if (frame % 180 === 0 && floor2Windows.length) {
+    // janelas: abrem/fecham devagar; no máximo 2 abertas
+    if (frame % 360 === 0 && floor2Windows.length) {
+      const openCount = floor2Windows.filter(w => w.open).length;
       const w = floor2Windows[Math.floor(Math.random() * floor2Windows.length)];
-      w.open = !w.open;
-      if (Math.hypot(player.x - w.x, player.y - w.y) < 200) {
-        showMessage(w.open ? 'Uma janela se abriu sozinha...' : 'Uma janela bateu...', 1800);
+      if (w.open || openCount < 2) {
+        w.open = !w.open;
+        if (typeof AudioSys !== 'undefined') AudioSys.window();
+        if (Math.hypot(player.x - w.x, player.y - w.y) < 220) {
+          showMessage(w.open ? 'Uma janela se abriu sozinha...' : 'Uma janela bateu...', 1600);
+        }
       }
     }
+    // dreno leve: -1 a cada ~2s por janela aberta
     for (const w of floor2Windows) {
-      if (w.open && frame % 40 === 0)
-        player.sanity = Math.max(0, player.sanity - 3);
+      if (w.open && frame % 120 === 0)
+        player.sanity = Math.max(0, player.sanity - 1);
     }
   }
   if (player.sanity <= 0) {
