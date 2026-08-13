@@ -97,6 +97,7 @@ function isDoorUnlocked(wx, wy) {
 
 function unlockDoorAt(wx, wy, id) {
   unlockedDoors.push({ x: wx, y: wy, r: 100, id: id || null });
+  if (typeof AudioSys !== 'undefined') AudioSys.doorUnlock();
 }
 
 function isSolid(wx, wy) {

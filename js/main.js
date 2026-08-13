@@ -52,6 +52,9 @@ let floor2Windows = [];
 let floor2Items = [];
 let floor2Notes = [];
 let bossDoorUnlocked = false;
+let storageOpen = false;
+let storageChest = [null, null, null, null, null, null, null, null]; // 8 slots na fogueira
+
 
 // intro cinemática
 let introActive = false;
@@ -98,6 +101,7 @@ function saveGame() {
     floor2Windows: floor2Windows.map(w => ({ x: w.x, y: w.y, open: !!w.open })),
     floor2Items: floor2Items.map(i => ({ type: i.type, taken: !!i.taken, x: i.x, y: i.y })),
     floor2Notes: floor2Notes.map(n => ({ id: n.id, read: !!n.read })),
+    storageChest: storageChest.slice(),
   };
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
@@ -175,6 +179,8 @@ function loadGame() {
   unlockedDoors = (data.unlockedDoors || []).slice();
   chestOpened = !!data.chestOpened;
   bossDoorUnlocked = !!data.bossDoorUnlocked;
+  storageChest = (data.storageChest || [null,null,null,null,null,null,null,null]).slice(0, 8);
+  while (storageChest.length < 8) storageChest.push(null);
 
   if (currentFloor === 2) {
     floor2Windows = (typeof FLOOR2_WINDOWS !== 'undefined' ? FLOOR2_WINDOWS : []).map(w => ({ ...w }));
@@ -403,6 +409,11 @@ window.addEventListener('keydown', e => {
     }
     return;
   }
+  if (storageOpen && (e.key === 'Escape' || e.key.toLowerCase() === 'e')) {
+    e.preventDefault();
+    closeStorage();
+    return;
+  }
   if (e.key.toLowerCase() === 'c') {
     debugCollision = !debugCollision;
     showMessage(debugCollision ? ('DEBUG ' + (currentFloor===2?'2º':'1º') + ' andar (C sai)') : 'Debug off', 1200);
@@ -516,6 +527,14 @@ function getNearbyPrompt() {
       if (Math.hypot(fx - n.x, fy - n.y) < reach)
         return 'Aperte E para ler a carta';
     }
+    if (typeof FLOOR2_DOORS !== 'undefined') {
+      for (const d of FLOOR2_DOORS) {
+        if (Math.hypot(fx - d.x, fy - d.y) < 55)
+          return d.locked && !isDoorUnlocked(d.x, d.y)
+            ? ('Aperte E — ' + (d.label || 'porta'))
+            : 'Porta aberta';
+      }
+    }
     if (typeof FLOOR2_BOSS_DOOR !== 'undefined') {
       const d = FLOOR2_BOSS_DOOR;
       if (Math.hypot(fx - d.x, fy - d.y) < 60)
@@ -548,7 +567,7 @@ function getNearbyPrompt() {
   }
   for (const obj of interactables) {
     if (Math.hypot(fx - obj.x, fy - obj.y) > (obj.r || 48)) continue;
-    if (obj.type === 'fogueira') return 'Aperte E para descansar na fogueira';
+    if (obj.type === 'fogueira') return currentFloor === 1 ? 'Aperte E para descansar na fogueira (salvar)' : null;
     if (obj.type === 'janela') return obj.open ? 'Aperte E para fechar a janela' : 'Aperte E para abrir a janela';
     if (obj.type === 'bau') return chestOpened ? 'Baú aberto' : 'Aperte E para abrir o baú';
     if (obj.type === 'alavanca') return obj.on ? 'Aperte E para desligar a alavanca' : 'Aperte E para puxar a alavanca';
@@ -599,7 +618,76 @@ function canPickItem(type) {
   return true;
 }
 
+
+function openStorage() {
+  storageOpen = true;
+  const el = document.getElementById('storage-overlay');
+  if (el) el.classList.remove('hidden');
+  renderStorage();
+  if (typeof AudioSys !== 'undefined') AudioSys.chest();
+}
+
+function closeStorage() {
+  storageOpen = false;
+  const el = document.getElementById('storage-overlay');
+  if (el) el.classList.add('hidden');
+  saveGame(); // auto-save ao fechar
+}
+
+function renderStorage() {
+  const invEl = document.getElementById('storage-inv');
+  const chestEl = document.getElementById('storage-chest');
+  if (!invEl || !chestEl || !player) return;
+  const label = (id) => (KEY_LABELS && KEY_LABELS[id]) || id || '';
+  invEl.innerHTML = '';
+  for (let i = 0; i < 4; i++) {
+    const slot = document.createElement('div');
+    const it = player.inventory[i];
+    slot.className = 'storage-slot' + (it ? '' : ' empty');
+    slot.textContent = it ? label(it) : '—';
+    if (it) slot.onclick = () => moveInvToChest(i);
+    invEl.appendChild(slot);
+  }
+  chestEl.innerHTML = '';
+  for (let i = 0; i < 8; i++) {
+    const slot = document.createElement('div');
+    const it = storageChest[i];
+    slot.className = 'storage-slot' + (it ? '' : ' empty');
+    slot.textContent = it ? label(it) : '—';
+    if (it) slot.onclick = () => moveChestToInv(i);
+    chestEl.appendChild(slot);
+  }
+}
+
+function moveInvToChest(i) {
+  const it = player.inventory[i];
+  if (!it) return;
+  const empty = storageChest.findIndex(s => !s);
+  if (empty < 0) { showMessage('Baú cheio.', 1500); return; }
+  storageChest[empty] = it;
+  player.inventory[i] = null;
+  if (it === 'lanterna') {
+    // se tirou a última lanterna do inv, mantém hasLantern se chest has it? ok
+  }
+  renderStorage();
+  if (typeof AudioSys !== 'undefined') AudioSys.pickup();
+}
+
+function moveChestToInv(i) {
+  const it = storageChest[i];
+  if (!it) return;
+  const empty = player.inventory.findIndex(s => !s);
+  if (empty < 0) { showMessage('Inventário cheio.', 1500); return; }
+  player.inventory[empty] = it;
+  storageChest[i] = null;
+  if (it === 'lanterna') player.hasLantern = true;
+  renderStorage();
+  if (typeof AudioSys !== 'undefined') AudioSys.pickup();
+}
+
+
 function interact() {
+  if (storageOpen) { closeStorage(); return; }
   if (letterOpen) { closeLetter(); return; }
   const fx = player.x, fy = player.y + player.footOffset;
 
@@ -637,6 +725,27 @@ function interact() {
         n.read = true;
         showLetter(n.text);
         return;
+      }
+    }
+    // portas em cadeia do 2º
+    if (typeof FLOOR2_DOORS !== 'undefined') {
+      for (const d of FLOOR2_DOORS) {
+        if (Math.hypot(fx - d.x, fy - d.y) < 55) {
+          if (isDoorUnlocked(d.x, d.y) || !d.locked) {
+            showSpeech('A porta está aberta.');
+          } else if (player.hasItem(d.key)) {
+            unlockDoorAt(d.x, d.y, d.id);
+            d.locked = false;
+            const idx = player.inventory.indexOf(d.key);
+            if (idx >= 0) player.inventory[idx] = null;
+            if (typeof AudioSys !== 'undefined') AudioSys.doorUnlock();
+            showSpeech('A ' + ((KEY_LABELS && KEY_LABELS[d.key]) || d.key) + ' abriu a porta.');
+          } else {
+            if (typeof AudioSys !== 'undefined') AudioSys.doorLocked();
+            showSpeech('Trancada. Preciso da ' + ((KEY_LABELS && KEY_LABELS[d.key]) || d.key) + '.');
+          }
+          return;
+        }
       }
     }
     // porta boss
@@ -730,13 +839,12 @@ function interact() {
     if (Math.hypot(fx - obj.x, fy - obj.y) > (obj.r || 48)) continue;
 
     if (obj.type === 'fogueira') {
+      if (currentFloor !== 1) return;
       player.heal(100);
-      // não respawna inimigos — só cura + save
-      const ok = saveGame();
-      showSpeech(ok
-        ? 'O calor da fogueira acalma a mente. Progresso salvo.'
-        : 'O calor da fogueira acalma a mente. Sanidade restaurada.');
-      showMessage(ok ? 'Jogo salvo na fogueira.' : 'Sanidade restaurada.', 2500);
+      saveGame();
+      if (typeof AudioSys !== 'undefined') AudioSys.save();
+      showSpeech('A fogueira aquece. Você pode guardar itens aqui.');
+      openStorage();
       return;
     }
     if (obj.type === 'flavor') {
@@ -854,12 +962,14 @@ function interact() {
 
 function attack() {
   if (!player.startAttack()) return;
+  if (typeof AudioSys !== 'undefined') AudioSys.punch();
   let hit = false;
   for (const e of enemies) {
     if (!e.alive) continue;
     if (Math.hypot(player.x - e.x, player.y - e.y) < player.attackRange + e.size * 0.4) {
       e.takeDamage(player.hasItem('faca') ? 26 : 12);
       hit = true;
+      if (typeof AudioSys !== 'undefined') AudioSys.hit();
     }
   }
   if (hit) showMessage('Acertou!', 500);
@@ -890,12 +1000,13 @@ function update() {
   if (keys['s'] || keys['arrowdown']) dy = 1;
   if (keys['a'] || keys['arrowleft']) dx = -1;
   if (keys['d'] || keys['arrowright']) dx = 1;
-  if (!player.attacking && !letterOpen) {
+  if (!player.attacking && !letterOpen && !storageOpen) {
     player.applyMove(dx, dy);
   }
 
   for (const e of enemies) e.update(player);
   if (!player.lanternOn && frame % 100 === 0) player.sanity = Math.max(0, player.sanity - 1);
+  if (frame % 900 === 0 && typeof AudioSys !== 'undefined') AudioSys.ambientSting();
   for (const obj of interactables) {
     if (obj.type === 'janela' && obj.open && frame % 45 === 0)
       player.sanity = Math.max(0, player.sanity - 2);
@@ -916,6 +1027,7 @@ function update() {
   }
   if (player.sanity <= 0) {
     gameRunning = false;
+    if (typeof AudioSys !== 'undefined') AudioSys.death();
     document.getElementById('gameover-screen').classList.remove('hidden');
   }
   updateHUD(player, getZoneName());
@@ -1156,12 +1268,21 @@ function draw() {
     }
   }
 
-  for (const obj of interactables) {
+  if (currentFloor === 1) for (const obj of interactables) {
     if (obj.type === 'fogueira') {
       const f = Math.sin(frame * 0.2) * 3;
-      ctx.fillStyle = 'rgba(255,120,30,0.6)';
+      // glow
+      ctx.fillStyle = 'rgba(255,100,20,0.25)';
       ctx.beginPath();
-      ctx.arc(obj.x, obj.y - 4 + f * 0.2, 10, 0, Math.PI * 2);
+      ctx.arc(obj.x, obj.y, 28 + f, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,140,30,0.7)';
+      ctx.beginPath();
+      ctx.arc(obj.x, obj.y - 4 + f * 0.2, 11, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,220,80,0.9)';
+      ctx.beginPath();
+      ctx.arc(obj.x, obj.y - 2 + f * 0.15, 5, 0, Math.PI * 2);
       ctx.fill();
     }
     if (obj.type === 'alavanca') {

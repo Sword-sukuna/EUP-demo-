@@ -479,3 +479,35 @@ html, body {
   border-color: #c04030;
   color: #fff;
 }
+
+#storage-overlay {
+  position: absolute; inset: 0; z-index: 28;
+  background: rgba(0,0,0,0.72);
+  display: flex; align-items: center; justify-content: center;
+}
+#storage-overlay.hidden { display: none !important; }
+#storage-panel {
+  background: #1a120c;
+  border: 1px solid rgba(180,120,60,0.5);
+  padding: 20px 24px;
+  min-width: 420px;
+  box-shadow: 0 0 40px rgba(0,0,0,0.8);
+}
+#storage-panel h3 {
+  color: #e8b060; letter-spacing: 3px; margin: 0 0 8px; text-align: center; font-size: 14px;
+}
+.storage-hint { color: #7a6a50; font-size: 11px; text-align: center; margin-bottom: 14px; }
+.storage-cols { display: flex; gap: 24px; justify-content: center; }
+.storage-label { color: #a09070; font-size: 11px; margin-bottom: 6px; letter-spacing: 1px; }
+.storage-grid { display: grid; grid-template-columns: repeat(4, 52px); gap: 6px; }
+.storage-slot {
+  width: 52px; height: 52px;
+  border: 1px solid #5a4030;
+  background: #0e0a08;
+  color: #d0c0a0;
+  font-size: 10px;
+  display: flex; align-items: center; justify-content: center;
+  text-align: center; cursor: pointer; padding: 2px;
+}
+.storage-slot:hover { border-color: #c08040; background: #1a140c; }
+.storage-slot.empty { color: #3a3020; cursor: default; }

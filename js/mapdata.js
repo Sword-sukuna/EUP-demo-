@@ -64,8 +64,8 @@ const PUSHABLES = [
 ];
 
 const INTERACTABLES = [
-  // fogueira — checkpoint / save (hall da mansão)
-  { x: 1100, y: 850, type: 'fogueira', r: 55, label: 'Fogueira' },
+  // fogueira — quarto oeste: save + baú de itens
+  { x: 280, y: 900, type: 'fogueira', r: 55, label: 'Fogueira' },
 
   // quartos esq
   { x: 362, y: 208, type: 'flavor', r: 55, text: 'Uma cama desfeita. Como se alguém tivesse saído correndo.' },
@@ -183,13 +183,23 @@ const FLOOR2_WINDOWS = [
 ];
 
 // Itens 2º andar (verdes)
+// Cadeia 2º andar:
+// chave_f2a (área inicial) → porta oeste
+// chave_f2b (após porta oeste) → porta leste
+// chave_boss (após porta leste) → porta do sótão
 const FLOOR2_ITEMS = [
-  { x: 95,   y: 373,  type: 'cafe', taken: false },
-  { x: 2031, y: 326,  type: 'lanterna', taken: false }, // única
-  { x: 313,  y: 799,  type: 'faca', taken: false },     // única
+  { x: 95,   y: 373,  type: 'chave_f2a', taken: false },
+  { x: 2031, y: 326,  type: 'lanterna', taken: false },
+  { x: 313,  y: 799,  type: 'faca', taken: false },
   { x: 361,  y: 1415, type: 'cafe', taken: false },
+  { x: 400,  y: 1200, type: 'chave_f2b', taken: false },
   { x: 1366, y: 1522, type: 'chave_boss', taken: false },
   { x: 919,  y: 1519, type: 'cafe', taken: false },
+];
+
+const FLOOR2_DOORS = [
+  { id: 'f2_porta_o', x: 600,  y: 800,  key: 'chave_f2a', label: 'Porta Oeste 2º', locked: true },
+  { id: 'f2_porta_l', x: 1550, y: 690,  key: 'chave_f2b', label: 'Porta Leste 2º', locked: true },
 ];
 
 // Notas 2º andar
@@ -220,5 +230,7 @@ const MAP_ENEMIES_F2 = [
 
 const KEY_LABELS_EXTRA = {
   chave_boss: 'Chave do Sótão',
+  chave_f2a: 'Chave do 2º Oeste',
+  chave_f2b: 'Chave do 2º Leste',
 };
 Object.assign(KEY_LABELS, KEY_LABELS_EXTRA);

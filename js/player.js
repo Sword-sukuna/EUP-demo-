@@ -89,6 +89,7 @@ class Player {
     if (this.invincible > 0) return;
     this.sanity = Math.max(0, this.sanity - amount);
     this.invincible = 40;
+    if (typeof AudioSys !== 'undefined') AudioSys.playerHurt();
   }
 
   heal(amount) {
@@ -97,7 +98,12 @@ class Player {
 
   addItem(type) {
     for (let i = 0; i < 4; i++) {
-      if (!this.inventory[i]) { this.inventory[i] = type; return true; }
+      if (!this.inventory[i]) {
+        this.inventory[i] = type;
+        if (type === 'lanterna') this.hasLantern = true;
+        if (typeof AudioSys !== 'undefined') AudioSys.pickup();
+        return true;
+      }
     }
     return false;
   }

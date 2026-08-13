@@ -36,6 +36,23 @@
       </div>
     </div>
 
+    <div id="storage-overlay" class="hidden">
+      <div id="storage-panel">
+        <h3>FOGUEIRA — GUARDA</h3>
+        <p class="storage-hint">Clique num item para mover · E / Esc fecha · Salva automaticamente</p>
+        <div class="storage-cols">
+          <div>
+            <div class="storage-label">Inventário</div>
+            <div id="storage-inv" class="storage-grid"></div>
+          </div>
+          <div>
+            <div class="storage-label">Baú</div>
+            <div id="storage-chest" class="storage-grid"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div id="intro-overlay" class="hidden">
       <div id="intro-text"></div>
       <button type="button" id="btn-skip-intro">PULAR</button>
@@ -59,6 +76,7 @@
   </div>
 
   <script src="js/mapdata.js"></script>
+  <script src="js/audio.js"></script>
   <script src="js/collision.js"></script>
   <script src="js/player.js"></script>
   <script src="js/entities.js"></script>
