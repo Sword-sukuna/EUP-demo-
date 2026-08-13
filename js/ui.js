@@ -1,5 +1,28 @@
 // ========== UI ==========
 
+function itemIcon(item) {
+  const icons = {
+    cafe: '☕',
+    faca: '🔪',
+    lanterna: '🔦',
+    chave: '🔑',
+    chave_esq: '🔑',
+    chave_dir: '🔑',
+    chave_dir2: '🔑',
+    chave_beco: '🔑',
+    chave_f2a: '🔑',
+    chave_f2b: '🔑',
+    chave_boss: '🔑',
+    carta_2andar: '📜',
+  };
+  return icons[item] || '•';
+}
+
+function itemLabel(item) {
+  if (typeof KEY_LABELS !== 'undefined' && KEY_LABELS[item]) return KEY_LABELS[item];
+  return item;
+}
+
 function updateHUD(player, roomName) {
   const fill = document.getElementById('sanity-fill');
   const pct = Math.max(0, player.sanity);
@@ -15,13 +38,13 @@ function updateHUD(player, roomName) {
 
   document.getElementById('room-name').textContent = roomName;
 
-  const slots = document.querySelectorAll('.slot');
-  const icons = {
-    cafe: '☕', faca: '🔪', lanterna: '🔦', chave: '🔑',
-    chave_esq: '🔑', chave_dir: '🔑', chave_dir2: '🔑', chave_beco: '🔑',
-    carta_2andar: '📜'
-  };
+  // objetivo atual
+  const objEl = document.getElementById('objective');
+  if (objEl && typeof getObjective === 'function') {
+    objEl.textContent = getObjective();
+  }
 
+  const slots = document.querySelectorAll('.slot');
   slots.forEach((slot, i) => {
     const item = player.inventory[i];
     slot.classList.toggle('selected', i === player.selectedSlot);
@@ -30,7 +53,7 @@ function updateHUD(player, roomName) {
       slot.title = '';
       return;
     }
-    slot.title = (typeof KEY_LABELS !== 'undefined' && KEY_LABELS[item]) ? KEY_LABELS[item] : item;
+    slot.title = itemLabel(item);
     if (item === 'carta_2andar' || (item + '').startsWith('carta')) {
       const img = document.createElement('img');
       img.src = 'assets/sprites/carta/carta_icon.png';
@@ -40,7 +63,7 @@ function updateHUD(player, roomName) {
       img.style.imageRendering = 'pixelated';
       slot.appendChild(img);
     } else {
-      slot.textContent = icons[item] || '?';
+      slot.textContent = itemIcon(item);
     }
     const name = document.createElement('div');
     name.className = 'item-name';

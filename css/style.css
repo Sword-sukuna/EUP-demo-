@@ -511,3 +511,12 @@ html, body {
 }
 .storage-slot:hover { border-color: #c08040; background: #1a140c; }
 .storage-slot.empty { color: #3a3020; cursor: default; }
+
+#objective {
+  font-size: 11px;
+  color: #c0a060;
+  letter-spacing: 0.5px;
+  max-width: 420px;
+  text-shadow: 0 1px 4px #000;
+  opacity: 0.95;
+}

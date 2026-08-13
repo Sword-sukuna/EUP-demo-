@@ -68,11 +68,11 @@ let introPlaying = false;
 const INTRO_TARGET_ZOOM = 1.8;
 const INTRO_START_ZOOM = 3.4;
 const INTRO_LINES = [
-  'Você abre os olhos...',
-  'O bar está vazio. O silêncio pesa no peito.',
-  'Os medos dela ainda habitam esta mansão.',
+  'Você abre os olhos no bar...',
+  'Ela sumiu nesta mansão. Os medos dela ainda andam pelos corredores.',
+  'Empurre a caixa. Pegue a chave. Entre na mansão.',
+  'Cada porta pede a chave certa — em ordem.',
   'Não deixe a sanidade chegar a zero.',
-  'Levante-se. Algo se move no escuro.',
 ];
 
 
@@ -371,8 +371,13 @@ function goToFloor2() {
   floor2Items = (typeof FLOOR2_ITEMS !== 'undefined' ? FLOOR2_ITEMS : []).map(i => ({ ...i }));
   floor2Notes = (typeof FLOOR2_NOTES !== 'undefined' ? FLOOR2_NOTES : []).map(n => ({ ...n }));
   bossDoorUnlocked = false;
-  showMessage('2º andar. Janelas drenam sanidade se abertas.', 3500);
-  showSpeech('O ar aqui em cima é mais frio...');
+  // carta já foi usada para subir — remove do inventário e do chão
+  for (let i = 0; i < player.inventory.length; i++) {
+    if (player.inventory[i] === 'carta_2andar') player.inventory[i] = null;
+  }
+  items = items.filter(it => it.type !== 'carta_2andar');
+  showMessage('2º andar. Objetivo: chave central → oeste → leste → sótão.', 4200);
+  showSpeech('A carta se desfez nas escadas. O ar aqui em cima é mais frio...');
 }
 
 function goToFloor1() {
@@ -982,11 +987,36 @@ function attack() {
 }
 
 function getZoneName() {
+  if (currentFloor === 2) return '2º Andar';
   for (const z of ZONES) {
     if (player.x >= z.x && player.x <= z.x + z.w && player.y >= z.y && player.y <= z.y + z.h)
       return z.name;
   }
   return 'Mansão';
+}
+
+function getObjective() {
+  if (!player) return '';
+  if (currentFloor === 2) {
+    if (bossDoorUnlocked || (typeof isDoorUnlocked === 'function' && typeof FLOOR2_BOSS_DOOR !== 'undefined' && isDoorUnlocked(FLOOR2_BOSS_DOOR.x, FLOOR2_BOSS_DOOR.y)))
+      return 'Objetivo: entrar no sótão';
+    if (player.hasItem('chave_boss')) return 'Objetivo: use a Chave do Sótão na porta escura';
+    if (player.hasItem('chave_f2b')) return 'Objetivo: abra a porta leste → pegue a chave do sótão';
+    if (player.hasItem('chave_f2a')) return 'Objetivo: abra a porta oeste → pegue a próxima chave';
+    return 'Objetivo: pegue a chave no corredor central';
+  }
+  // 1º andar
+  if (player.hasItem('carta_2andar')) return 'Objetivo: vá às escadas e suba ao 2º andar';
+  if (player.hasItem('chave_dir2')) return 'Objetivo: abra o quarto do Manequim (leste inferior)';
+  if (player.hasItem('chave_dir')) return 'Objetivo: abra a porta leste superior → próxima chave';
+  if (player.hasItem('chave_esq')) return 'Objetivo: abra o corredor oeste → próxima chave';
+  if (player.hasItem('chave_beco')) return 'Objetivo: abra a porta do beco (Bar → Mansão)';
+  // caixa
+  const box = (pushables || []).find(b => b.id === 'caixa_bar');
+  if (box && !box.pushed) return 'Objetivo: no bar, empurre a caixa (E) e pegue a chave';
+  if (items.some(i => i.type === 'chave_beco' && !i.taken && !i.hidden))
+    return 'Objetivo: pegue a chave da mansão no bar';
+  return 'Objetivo: explore o bar';
 }
 
 function update() {
@@ -1011,7 +1041,9 @@ function update() {
   }
 
   for (const e of enemies) e.update(player);
-  if (!player.lanternOn && frame % 100 === 0) player.sanity = Math.max(0, player.sanity - 1);
+  // sanidade passiva só no 2º andar (escuro / medo)
+  if (currentFloor === 2 && !player.lanternOn && frame % 100 === 0)
+    player.sanity = Math.max(0, player.sanity - 1);
   if (frame % 900 === 0 && typeof AudioSys !== 'undefined') AudioSys.ambientSting();
   for (const obj of interactables) {
     if (obj.type === 'janela' && obj.open && frame % 120 === 0)
@@ -1210,9 +1242,19 @@ function draw() {
       if (item.taken) continue;
       const pulse = 1 + Math.sin(frame * 0.12) * 0.1;
       ctx.beginPath();
-      ctx.arc(item.x, item.y, 8 * pulse, 0, Math.PI * 2);
-      ctx.fillStyle = '#40e060';
+      ctx.arc(item.x, item.y, 12, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0,255,80,0.2)';
       ctx.fill();
+      ctx.beginPath();
+      ctx.arc(item.x, item.y, 7 * pulse, 0, Math.PI * 2);
+      ctx.fillStyle = (item.type || '').startsWith('chave') ? '#e8c040' : '#40e060';
+      ctx.fill();
+      ctx.font = '14px serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#fff';
+      const ic = typeof itemIcon === 'function' ? itemIcon(item.type) : '•';
+      ctx.fillText(ic, item.x, item.y + 5);
+      ctx.textAlign = 'left';
     }
     for (const n of floor2Notes) {
       if (cartaImg && cartaImg.complete) {
@@ -1255,8 +1297,13 @@ function draw() {
     ctx.fill();
     ctx.beginPath();
     ctx.arc(item.x, item.y, 7 * pulse, 0, Math.PI * 2);
-    ctx.fillStyle = '#40e060';
+    ctx.fillStyle = (item.type || '').startsWith('chave') ? '#e8c040' : '#40e060';
     ctx.fill();
+    ctx.font = '14px serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#fff';
+    ctx.fillText(typeof itemIcon === 'function' ? itemIcon(item.type) : '•', item.x, item.y + 5);
+    ctx.textAlign = 'left';
     ctx.font = '12px serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';

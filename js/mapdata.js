@@ -99,11 +99,13 @@ const INTERACTABLES = [
 ];
 
 const STORY_NOTES = [
+  { x: 1139, y: 1561, id: 'n5', text: 'Recado no bar:\n\n"Empurre a caixa atrás do balcão.\nA chave da mansão está escondida.\n\n— Foi aqui que nos vimos pela última vez."', read: false },
+  { x: 1100, y: 1100, id: 'n0', text: 'Mapa rasgado:\n\nBAR → BECO → MANSÃO\nOeste → Leste → Quarto do Manequim\nDepois: escadas (2º andar)\n\nAs chaves abrem em ordem. Sem a anterior, a próxima porta não cede."', read: false },
+  { x: 900,  y: 850,  id: 'n6', text: 'Bilhete no hall:\n\n"Procure a chave neste hall.\nEla abre o corredor oeste."', read: false },
   { x: 587,  y: 222, id: 'n1', text: 'Carta rasgada:\n\n"As chaves se escondem em cadeia.\nUma porta abre o caminho para a próxima."', read: false },
   { x: 1137, y: 218, id: 'n2', text: 'Bilhete:\n\n"Não confie no que as paredes sussurram.\nSanidade é tudo o que nos resta."', read: false },
   { x: 2065, y: 194, id: 'n3', text: 'Página de diário:\n\n"Ela ainda anda pelos corredores.\nEu ouço os passos toda noite."', read: false },
-  { x: 1739, y: 558, id: 'n4', text: 'Nota:\n\n"O manequim guarda o segredo do segundo andar.\nDerrote-o e a carta será sua."', read: false },
-  { x: 1139, y: 1561, id: 'n5', text: 'Recado no bar:\n\n"Empurre a caixa. A saída está escondida.\n— Foi aqui que nos vimos pela última vez."', read: false },
+  { x: 1739, y: 558, id: 'n4', text: 'Nota:\n\n"O manequim guarda o segredo do segundo andar.\nDerrote-o e a carta será sua.\nCom a carta, as escadas respondem."', read: false },
 ];
 
 const STAIRS = [
@@ -184,19 +186,18 @@ const FLOOR2_WINDOWS = [
   { x: 234,  y: 1575, open: false },
 ];
 
-// Itens 2º andar (verdes)
-// Cadeia 2º andar:
-// chave_f2a (área inicial) → porta oeste
-// chave_f2b (após porta oeste) → porta leste
-// chave_boss (após porta leste) → porta do sótão
+// ===== 2º ANDAR — mesma lógica do 1º =====
+// Spawn perto da escada (centro).
+// 1) chave_f2a (corredor central, livre) → abre porta oeste
+// 2) chave_f2b (quarto oeste, atrás da porta) → abre porta leste
+// 3) chave_boss (quarto leste, atrás da porta leste) → porta do sótão
 const FLOOR2_ITEMS = [
-  { x: 95,   y: 373,  type: 'chave_f2a', taken: false },
-  { x: 2031, y: 326,  type: 'lanterna', taken: false },
-  { x: 313,  y: 799,  type: 'faca', taken: false },
-  { x: 361,  y: 1415, type: 'cafe', taken: false },
-  { x: 400,  y: 1200, type: 'chave_f2b', taken: false },
-  { x: 1366, y: 1522, type: 'chave_boss', taken: false },
-  { x: 919,  y: 1519, type: 'cafe', taken: false },
+  { x: 1120, y: 950,  type: 'chave_f2a', taken: false },  // centro, acessível
+  { x: 280,  y: 450,  type: 'chave_f2b', taken: false },  // oeste (após porta o)
+  { x: 1950, y: 1100, type: 'chave_boss', taken: false }, // leste (após porta l)
+  { x: 1000, y: 1200, type: 'cafe', taken: false },
+  { x: 400,  y: 1400, type: 'cafe', taken: false },
+  { x: 1800, y: 400,  type: 'cafe', taken: false },
 ];
 
 const FLOOR2_DOORS = [
@@ -206,6 +207,7 @@ const FLOOR2_DOORS = [
 
 // Notas 2º andar
 const FLOOR2_NOTES = [
+  { x: 1120, y: 800, id: 'f2n0', text: "Mapa do 2º:\n\n1) Chave no corredor central\n2) Porta oeste → outra chave\n3) Porta leste → chave do sótão\n4) Porta escura (sótão)\n\nFeche as janelas. O ar gelado drena a sanidade.", read: false },
   { x: 700, y: 400, id: 'f2n1', text: "Diário:\n\n\"O sótão guarda o que não deveria existir.\nA porta escura só abre com a chave certa.\"", read: false },
   { x: 1800, y: 500, id: 'f2n2', text: "Bilhete:\n\n\"As janelas... não as deixe abertas.\nO frio come a mente.\"", read: false },
 ];
