@@ -703,3 +703,18 @@ html, body {
 #game-container {
   touch-action: none;
 }
+
+.cred-school {
+  margin-top: 22px;
+  font-size: 15px;
+  color: #e8d8b0;
+  letter-spacing: 1.5px;
+  text-shadow: 0 0 12px rgba(180,120,40,0.35);
+}
+.cred-city {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #7a6a50;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
